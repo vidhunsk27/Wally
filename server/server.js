@@ -30,15 +30,22 @@ function fileStore() {
   };
 }
 function firestoreStore() {
-  const admin = require('firebase-admin');
-  admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
-  const fsdb = admin.firestore(), c = col => fsdb.collection('wally_' + col), safe = id => encodeURIComponent(String(id)).slice(0, 1400);
+  const admin = require('firebase-admin'), { getFirestore } = require('firebase-admin/firestore');
+  const app = admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
+  // Firebase names the database either "(default)" or "default" depending on when the project was made.
+  // Try both (or the one named in FIRESTORE_DATABASE_ID) and keep whichever answers.
+  const ids = process.env.FIRESTORE_DATABASE_ID ? [process.env.FIRESTORE_DATABASE_ID] : ['(default)', 'default'];
+  let fsdb = null, opening = null;
+  const open = async () => { let last; for (const id of ids) { try { const d = id === '(default)' ? getFirestore(app) : getFirestore(app, id); await d.collection('wally_meta').limit(1).get(); console.log('Firestore database in use: ' + id); return d; } catch (e) { last = e; console.error('Firestore database "' + id + '" not usable: ' + e.message); } } throw last; };
+  const db = async () => { if (fsdb) return fsdb; if (!opening) opening = open().then(d => (fsdb = d)).finally(() => { opening = null; }); return opening; };
+  const c = async col => (await db()).collection('wally_' + col), safe = id => encodeURIComponent(String(id)).slice(0, 1400);
+  db().catch(() => {});
   return {
     kind: 'firestore',
-    async all(col) { const s = await c(col).get(); return s.docs.map(d => d.data().v); },
-    async get(col, id) { const d = await c(col).doc(safe(id)).get(); return d.exists ? d.data().v : null; },
-    async set(col, id, val) { await c(col).doc(safe(id)).set({ v: val }); },
-    async del(col, id) { await c(col).doc(safe(id)).delete(); }
+    async all(col) { const s = await (await c(col)).get(); return s.docs.map(d => d.data().v); },
+    async get(col, id) { const d = await (await c(col)).doc(safe(id)).get(); return d.exists ? d.data().v : null; },
+    async set(col, id, val) { await (await c(col)).doc(safe(id)).set({ v: val }); },
+    async del(col, id) { await (await c(col)).doc(safe(id)).delete(); }
   };
 }
 let store;
