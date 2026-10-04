@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>S Y S T E M — Solo Leveling</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="globalTooltip"></div>
+<div class="bg-mesh"></div>
+<div class="grid-overlay"></div>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="logo">
+      <span>SYS</span>
+      <div>
+        <b>S Y S T E M</b>
+        <small>HUNTER INTERFACE</small>
+      </div>
+    </div>
+    
+    <div class="player-mini">
+      <div class="avatar" id="playerAvatar">V</div>
+      <div>
+        <b id="sideName">PLAYER</b>
+        <small>CLASS <span id="sideRank">E-Rank</span></small>
+      </div>
+      <strong id="sideLevel">01</strong>
+    </div>
+
+    <nav>
+      <button class="nav active" data-page="command">◈ <span>Status Window</span></button>
+      <button class="nav" data-page="training">⚔ <span>Dungeon Lab</span></button>
+      <button class="nav" data-page="nutrition">◆ <span>Recovery Fuel</span></button>
+      <button class="nav" data-page="progress">↗ <span>Hunter Log</span></button>
+      <button class="nav" data-page="coach">✦ <span>The Architect (AI)</span></button>
+      <button class="nav" data-page="settings">⚙ <span>Player Config</span></button>
+      
+      <button class="nav nav-exit" onclick="window.location.href='../index.html'">⎋ <span>Exit to Command</span></button>
+    </nav>
+    
+    <div class="system-tip">
+      <b>[SYSTEM DIRECTIVE]</b>
+      <p>Failure to complete daily conditioning will trigger an immediate emergency quest penalty.</p>
+    </div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <div>
+        <span class="eyebrow" id="today">MON, SEP 7</span>
+        <h1 id="greeting">Arise, Hunter.</h1>
+      </div>
+      <div class="top-actions">
+        <span class="sync">● SYSTEM CONNECTED</span>
+        <button class="round" data-page="settings" title="Player Configuration">⚙</button>
+      </div>
+    </header>
+
+    <!-- TAB 1: STATUS WINDOW & QUESTS -->
+    <section class="page active" id="command">
+      <div class="hero">
+        <div class="hero-copy">
+          <div class="rank">CLASS <b id="rank">E-Rank</b> <span>•</span> LEVEL <b id="level">01</b></div>
+          <h2>DAILY QUEST<br><em id="heroMode">PREPARATION TO BECOME STRONG</em></h2>
+          <p id="systemMessage">The System monitors your biometric condition. Complete all conditioning protocols to earn Ability Points.</p>
+          <div class="xp-wrap">
+            <div><span>EXP TO NEXT LEVEL</span><b id="xpLabel">0 / 100</b></div>
+            <div class="xpbar"><i id="xpbar"></i></div>
+          </div>
+        </div>
+        <div class="orb"><span>LVL</span><b id="orbLevel">1</b></div>
+      </div>
+
+      <div class="status-window">
+        <div class="status-header">
+          <div>
+            <h3 style="font: 800 24px 'Space Grotesk'; margin: 0; display:flex; align-items:center;">
+              STATUS WINDOW
+              <span class="info-icon" data-info="Your core combat stats. Physical training increases STR, AGI, and VIT. Nutritional intake and hydration boost INT and PER."><i data-lucide="info" class="w-4 h-4"></i></span>
+            </h3>
+            <span style="color: var(--muted); font-size: 11px; letter-spacing: 2px;">REAL-TIME VESSEL METRICS</span>
+          </div>
+          <div style="text-align: right;">
+            <span style="display: block; font-size: 10px; color: var(--accent2); font-weight: bold; letter-spacing: 1px;">HUNTER TITLE</span>
+            <b id="playerTitle" style="font-size: 16px;">Wolf Slayer</b>
+          </div>
+        </div>
+        
+        <div class="status-bars">
+          <div class="hp-mp-wrap">
+            <span>HEALTH POINTS (HP) <b id="hpVal">100/100</b></span>
+            <div class="hp-bar"><i id="hpBarFill" style="width: 100%;"></i></div>
+          </div>
+          <div class="hp-mp-wrap">
+            <span>MANA POINTS (MP) <b id="mpVal">50/50</b></span>
+            <div class="mp-bar"><i id="mpBarFill" style="width: 100%;"></i></div>
+          </div>
+        </div>
+
+        <div class="stat-grid-5">
+          <div class="stat-box"><span>STRENGTH (STR)</span><b id="statStr">10</b></div>
+          <div class="stat-box"><span>VITALITY (VIT)</span><b id="statVit">10</b></div>
+          <div class="stat-box"><span>AGILITY (AGI)</span><b id="statAgi">10</b></div>
+          <div class="stat-box"><span>INTELLIGENCE (INT)</span><b id="statInt">10</b></div>
+          <div class="stat-box"><span>PERCEPTION (PER)</span><b id="statPer">10</b></div>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <article class="metric">
+          <span style="display:flex; align-items:center;">STREAK <span class="info-icon" data-info="Consecutive days without failing a daily quest."><i data-lucide="info" class="w-4 h-4"></i></span></span>
+          <b id="streak">0</b><small>DAYS</small>
+        </article>
+        <article class="metric">
+          <span style="display:flex; align-items:center;">CONDITION <span class="info-icon" data-info="Calculated dynamically by the AI regulator based on fatigue and recovery."><i data-lucide="info" class="w-4 h-4"></i></span></span>
+          <b id="readiness">—</b><small>/ 100</small>
+        </article>
+        <article class="metric">
+          <span>QUESTS CLEARED</span>
+          <b id="questDone">0/4</b><small>TODAY</small>
+        </article>
+        <article class="metric">
+          <span>COMBAT MINUTES</span>
+          <b id="weekMinutes">0</b><small>MINS</small>
+        </article>
+      </div>
+
+      <div class="section-title">
+        <div>
+          <span class="eyebrow">ACTIVE MISSIONS</span>
+          <h3 style="display:flex; align-items:center;">
+            Daily Objectives
+            <span class="info-icon" data-info="Complete all four daily quests to trigger bonus XP and avoid emergency dungeon penalty zones."><i data-lucide="info" class="w-4 h-4"></i></span>
+          </h3>
+        </div>
+        <button class="ghost" id="refreshQuests">↻ Re-roll Directives</button>
+      </div>
+      <div id="quests" class="quest-grid"></div>
+
+      <div class="dashboard-grid">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">AI REGULATED PROTOCOL</span>
+              <h3>Today's Dungeon Training</h3>
+            </div>
+            <span class="badge" id="planBadge">E-RANK</span>
+          </div>
+          <div id="todayPlan"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">BIOMETRIC OPTIMIZER</span>
+              <h3 style="display:flex; align-items:center;">
+                Condition Scan
+                <span class="info-icon" data-info="The AI adjusts today's training intensity and volume depending on your exhaustion and daily work exertion."><i data-lucide="info" class="w-4 h-4"></i></span>
+              </h3>
+            </div>
+            <span class="muted">Live Adaptation</span>
+          </div>
+          <div class="form">
+            <label>
+              Fatigue Level
+              <input id="fatigue" type="range" min="0" max="100" value="30">
+              <output id="fatigueOut">30%</output>
+            </label>
+            <label>
+              Sleep & Restoration
+              <input id="restoration" type="range" min="0" max="100" value="85">
+              <output id="restorationOut">85%</output>
+            </label>
+            <label>
+              Day-to-Day Activity Exertion
+              <select id="dailyExertion">
+                <option value="sedentary">Desk Bound / Sedentary (Standard Load)</option>
+                <option value="moderate">Moderate Movement / Commuting (+10% Volume)</option>
+                <option value="heavy">Intense Labor / Heavy Fatigue (Enforce Deload)</option>
+              </select>
+            </label>
+            <button class="primary" id="saveCheck">CALIBRATE PROTOCOL</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- TAB 2: DUNGEON TRAINING LAB -->
+    <section class="page" id="training">
+      <div class="page-heading">
+        <span class="eyebrow">DUNGEON COMBAT LAB</span>
+        <h2 style="display:flex; align-items:center;">
+          Stat-Enhancement Chamber
+          <span class="info-icon" data-info="Targeted calisthenics routines. Click 'Form Check' on any workout to see detailed execution guidelines and video demonstrations."><i data-lucide="info" class="w-4 h-4"></i></span>
+        </h2>
+        <p>Zero gym hardware required. Progress from E-Rank baseline to S-Rank Monarch vessel.</p>
+      </div>
+
+      <div class="filter">
+        <button class="active" data-filter="all">ALL PROTOCOLS</button>
+        <button data-filter="push">PUSH (STR)</button>
+        <button data-filter="legs">LEGS (AGI)</button>
+        <button data-filter="core">CORE (VIT)</button>
+        <button data-filter="full">FULL RAID</button>
+        <button data-filter="mobility">RECOVERY (PER)</button>
+      </div>
+      <div id="workouts" class="workout-grid"></div>
+    </section>
+
+    <!-- TAB 3: RECOVERY & NUTRITION -->
+    <section class="page" id="nutrition">
+      <div class="page-heading">
+        <span class="eyebrow">RECOVERY SYSTEM</span>
+        <h2 style="display:flex; align-items:center;">
+          Inventory & Mana Synthesis
+          <span class="info-icon" data-info="Consuming protein restores your Mana (MP) and increases Intelligence (INT). Energy intake is matched against your calculated basal maintenance rate."><i data-lucide="info" class="w-4 h-4"></i></span>
+        </h2>
+        <p>Vessel maintenance protocol derived from physical dimensions.</p>
+      </div>
+      
+      <article class="panel mb-6 border-accent">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow text-accent">ENERGY EXPENDITURE</span>
+            <h3>Vessel Maintenance Target</h3>
+            <p class="muted mt-1">Calculated via biometric formula (Height & Weight parameters).</p>
+          </div>
+        </div>
+        <div class="two-col" style="margin-top: 10px;">
+          <div>
+            <span style="font-size: 10px; color: var(--muted); letter-spacing: 2px;">MAINTENANCE ENERGY REQUIRED</span>
+            <b id="targetCalories" style="font-size: 28px; font-family: 'Space Grotesk'; color: var(--accent); display: block;">— kcal</b>
+          </div>
+          <div>
+            <span style="font-size: 10px; color: var(--muted); letter-spacing: 2px;">ENERGY BALANCE STATE</span>
+            <b id="calorieStatus" style="font-size: 18px; color: #fff; display: block; margin-top: 6px;">Awaiting Biometrics</b>
+          </div>
+        </div>
+      </article>
+
+      <div class="fuel-cards">
+        <article class="fuel"><span>ENERGY EXTRACTED</span><b id="calTotal">0</b><small>kcal</small></article>
+        <article class="fuel"><span>PROTEIN SYNTHESIZED</span><b id="proteinTotal">0</b><small>g</small></article>
+        <article class="fuel"><span>ITEMS CONSUMED</span><b id="mealTotal">0</b><small>today</small></article>
+      </div>
+
+      <!-- ADDED CALORIE/MACRO CHARTS TO NUTRITION -->
+      <div class="two-col mb-6">
+        <article class="panel">
+            <div class="panel-head"><div><span class="eyebrow">NUTRITION</span><h3>Fuel Intake (Kcal)</h3></div></div>
+            <div class="chart-container"><canvas id="cCal"></canvas></div>
+        </article>
+        <article class="panel">
+            <div class="panel-head"><div><span class="eyebrow">MACROS</span><h3>Mana Synthesis (Protein)</h3></div></div>
+            <div class="chart-container"><canvas id="cPro"></canvas></div>
+        </article>
+      </div>
+
+      <div class="two-col">
+        <article class="panel">
+          <div class="panel-head"><div><span class="eyebrow">CONSUMPTION</span><h3>Log Item</h3></div></div>
+          <div class="form">
+            <label>Item Description<input id="foodName" placeholder="e.g. Monster Meat, Whey Potion"></label>
+            <div class="twice">
+              <label>Energy (kcal)<input id="foodCal" type="number" min="0"></label>
+              <label>Protein (g)<input id="foodPro" type="number" min="0" step="0.1"></label>
+            </div>
+            <label>Meal Phase Designation
+              <select id="mealType">
+                <option value="Breakfast">Breakfast</option>
+                <option value="Lunch">Lunch</option>
+                <option value="Evening Snacks">Evening Snacks</option>
+                <option value="Dinner">Dinner</option>
+              </select>
+            </label>
+            <button class="primary" id="addFood">+ CONSUME ITEM</button>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><span class="eyebrow">INVENTORY</span><h3>Today's Feed</h3></div><button class="ghost" id="clearFood">Clear</button></div>
+          <div id="foodList"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- TAB 4: PROGRESSION & SHADOW EXTRACTION -->
+    <section class="page" id="progress">
+      <div class="page-heading">
+        <span class="eyebrow">ARCHIVE OF THE MONARCH</span>
+        <h2 style="display:flex; align-items:center;">
+          Combat Records
+          <span class="info-icon" data-info="Review your milestones and army extraction readiness."><i data-lucide="info" class="w-4 h-4"></i></span>
+        </h2>
+        <p>Every rep permanently increases your hunter power rating.</p>
+      </div>
+
+      <div class="metric-grid">
+        <article class="metric"><span>TOTAL EXP</span><b id="pXp">0</b></article>
+        <article class="metric"><span>DUNGEONS CLEARED</span><b id="pSessions">0</b></article>
+        <article class="metric"><span>RECORD STREAK</span><b id="pBest">0</b></article>
+        <article class="metric"><span>SYSTEM SCANS</span><b id="pChecks">0</b></article>
+      </div>
+      
+      <!-- SHADOW EXTRACTION TIERS -->
+      <article class="panel mb-6" style="border-color: rgba(168, 85, 247, 0.5); box-shadow: var(--glow-purple);">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow" style="color: #a855f7;">SHADOW ARMY PROTOCOL</span>
+            <h3 style="display:flex; align-items:center;">
+              Extracted Shadows
+              <span class="info-icon" data-info="Reaching higher level thresholds awakens higher rank shadow soldiers."><i data-lucide="info" class="w-4 h-4 text-purple-400"></i></span>
+            </h3>
+          </div>
+        </div>
+        <div class="stat-grid-5" id="shadowRanks">
+          <div class="stat-box" id="shadow1" style="opacity: 0.3;"><span>LVL 10</span><b style="font-size: 15px;">Shadow Infantry</b></div>
+          <div class="stat-box" id="shadow2" style="opacity: 0.3;"><span>LVL 20</span><b style="font-size: 15px;">Elite Knight</b></div>
+          <div class="stat-box" id="shadow3" style="opacity: 0.3;"><span>LVL 30</span><b style="font-size: 15px;">Iron Commander</b></div>
+          <div class="stat-box" id="shadow4" style="opacity: 0.3;"><span>LVL 40</span><b style="font-size: 15px;">Beru Marshal</b></div>
+          <div class="stat-box" id="shadow5" style="opacity: 0.3;"><span>LVL 50</span><b style="font-size: 15px;">Grand Marshal Bellion</b></div>
+        </div>
+      </article>
+
+      <!-- 6 REMAINING TELEMETRY CHARTS -->
+      <div class="section-title">
+        <div>
+          <span class="eyebrow">SYSTEM SCANNERS</span>
+          <h3 style="display:flex; align-items:center;">Advanced Telemetry <span class="info-icon" data-info="Deep visual insights into your progression over the last 7 days."><i data-lucide="info" class="w-4 h-4"></i></span></h3>
+        </div>
+      </div>
+
+      <div class="chart-grid-8">
+          <article class="panel">
+              <div class="panel-head"><div><span class="eyebrow">RADAR</span><h3>Attribute Matrix</h3></div></div>
+              <div class="chart-container"><canvas id="cRadar"></canvas></div>
+          </article>
+          <article class="panel">
+              <div class="panel-head"><div><span class="eyebrow">7-DAY TELEMETRY</span><h3>Combat Exertion</h3></div></div>
+              <div class="chart-container"><canvas id="cActivity"></canvas></div>
+          </article>
+          <article class="panel">
+              <div class="panel-head"><div><span class="eyebrow">PROGRESSION</span><h3>EXP Accumulation</h3></div></div>
+              <div class="chart-container"><canvas id="cXp"></canvas></div>
+          </article>
+          <article class="panel">
+              <div class="panel-head"><div><span class="eyebrow">BIOMETRICS</span><h3>Fatigue vs Recovery</h3></div></div>
+              <div class="chart-container"><canvas id="cFatigue"></canvas></div>
+          </article>
+          <article class="panel">
+              <div class="panel-head"><div><span class="eyebrow">CONSISTENCY</span><h3>Daily Quest Clear Rate</h3></div></div>
+              <div class="chart-container"><canvas id="cQuest"></canvas></div>
+          </article>
+          <article class="panel">
+              <div class="panel-head"><div><span class="eyebrow">COMBAT</span><h3>Dungeon Type Distribution</h3></div></div>
+              <div class="chart-container"><canvas id="cDungeon"></canvas></div>
+          </article>
+      </div>
+
+      <div class="two-col mt-6">
+        <article class="panel">
+          <div class="panel-head"><div><span class="eyebrow">TITLE UNLOCKS</span><h3>Achievements</h3></div></div>
+          <div class="achievements" id="achievements"></div>
+        </article>
+        <article class="panel">
+            <div class="panel-head"><div><span class="eyebrow">LOG CHRONOLOGY</span><h3>Condition History</h3></div></div>
+            <div id="history"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- TAB 5: THE ARCHITECT (AI REGULATOR) -->
+    <section class="page" id="coach">
+      <div class="page-heading">
+        <span class="eyebrow">SYSTEM ENTITY</span>
+        <h2>The Architect's Terminal</h2>
+        <p>The regulatory consciousness that governs your quests and physical awakening.</p>
+      </div>
+      <div class="coach-layout">
+        <article class="panel coach-main">
+          <div class="chat" id="chat">
+            <div class="msg bot">
+              <b>[SYSTEM CONSCIOUSNESS]</b>
+              <p>Player recognized. I monitor your physical recovery, fatigue markers, and stat growth. State your query or request an emergency load re-calibration.</p>
+            </div>
+          </div>
+          <div class="quick">
+            <button>Assess my current stats</button>
+            <button>My fatigue is high, reduce load</button>
+            <button>How do I progress to C-Rank?</button>
+            <button>Recommend optimal food intake</button>
+          </div>
+          <div class="composer">
+            <input id="question" placeholder="Submit inquiry to the System...">
+            <button class="primary" id="ask" style="width: 120px;">TRANSMIT</button>
+          </div>
+        </article>
+        <aside class="panel coach-card">
+          <span class="eyebrow">VESSEL STATUS</span>
+          <h3>Profile Overview</h3>
+          <div id="context"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TAB 6: PLAYER CONFIGURATION -->
+    <section class="page" id="settings">
+      <div class="page-heading">
+        <span class="eyebrow">SYSTEM RE-CALIBRATION</span>
+        <h2>Hunter Configuration</h2>
+        <p>Physical metrics used by the AI engine to compute maintenance calories and workload.</p>
+      </div>
+      <article class="panel settings-form">
+        <label>Player Designation<input id="name" placeholder="Vidhun"></label>
+        <div class="twice">
+          <label>Vessel Weight (kg)<input id="baseWeight" type="number" min="30" max="200" placeholder="72"></label>
+          <label>Vessel Height (cm)<input id="baseHeight" type="number" min="120" max="230" placeholder="178"></label>
+        </div>
+        <label>Rank Benchmark
+          <select id="experience">
+            <option>E-Rank (Beginner - Laying Foundation)</option>
+            <option>C-Rank (Intermediate - Consistent Load)</option>
+            <option>A-Rank (Elite - High Conditioning)</option>
+          </select>
+        </label>
+        <label>Available Equipment
+          <select id="equipment">
+            <option>Bodyweight Only (System Default)</option>
+            <option>Basic Pull-up Bar / Doorway</option>
+            <option>Weighted Vest / Dumbbells</option>
+          </select>
+        </label>
+        <label>Target Session Window
+          <select id="duration">
+            <option>15–20 min</option>
+            <option>30 min</option>
+            <option>45 min</option>
+          </select>
+        </label>
+        <button class="primary" id="saveProfile">COMMIT PARAMETERS</button>
+      </article>
+
+      <article class="panel mt-6" style="border-color: rgba(239, 68, 68, 0.4);">
+        <div>
+          <span class="eyebrow text-danger">SYSTEM PURGE</span>
+          <h3>Format Hunter Vessel</h3>
+          <p style="color: var(--muted); font-size: 12px; margin-top: 4px;">Permanently wipe all accumulated XP, titles, and stat progression back to Level 1.</p>
+        </div>
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button class="secondary" id="export">EXPORT SYSTEM JSON</button> 
+          <button class="danger" id="reset">RESET VESSEL</button>
+        </div>
+      </article>
+    </section>
+  </main>
+</div>
+
+<!-- INTERACTIVE EXERCISE GUIDE MODAL -->
+<div id="exerciseModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <span class="eyebrow" id="modalTag">MOVEMENT GUIDE</span>
+        <h3 id="modalTitle">Exercise Designation</h3>
+      </div>
+      <button class="round" onclick="closeExerciseModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalTarget" class="modal-stat-pill">TARGET MUSCLES</div>
+      <p id="modalDesc" style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin: 15px 0;">Instructions.</p>
+      
+      <div class="form-check-box">
+        <b style="color: var(--accent); display:block; margin-bottom: 6px; font-size: 11px; letter-spacing: 1px;">VERIFICATION CRITERIA (FORM CHECK):</b>
+        <ul id="modalVerification" style="font-size: 12px; color: var(--muted); padding-left: 18px; margin: 0; line-height: 1.6;">
+          <li>Criteria point.</li>
+        </ul>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <a id="modalVideoLink" href="#" target="_blank" class="primary" style="display: block; text-decoration: none;">
+          ▶ WATCH VIDEO TUTORIAL
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
