@@ -1,0 +1,10 @@
+{
+  "name": "wally-mk2-server",
+  "version": "1.0.0",
+  "description": "Backend for Wally MK 2 / C.A.S.P.E.R.: stores your data and serves the app",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "cors": "^2.8.5", "express": "^4.19.2" },
+  "optionalDependencies": { "firebase-admin": "^12.1.0" }
+}
