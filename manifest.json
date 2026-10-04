@@ -1,0 +1,17 @@
+{
+  "name": "Wally MK 2 • C.A.S.P.E.R.",
+  "short_name": "Wally MK 2",
+  "description": "Calculated Asset Security and Personal Expense Recorder",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050507",
+  "theme_color": "#050507",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "share_target": { "action": "./index.html", "method": "GET", "params": { "title": "title", "text": "text", "url": "url" } },
+  "shortcuts": [ { "name": "LEVEL//UP Fitness", "url": "./fitness/index.html" } ]
+}

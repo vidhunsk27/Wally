@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Wally MK 2 • C.A.S.P.E.R Protocol</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="p-3 md:p-8 relative">
+  <div id="globalTooltip"></div>
+  <div class="grid-overlay"></div><div class="bg-mesh"></div>
+
+  <div class="max-w-7xl mx-auto space-y-4 md:space-y-6 relative z-10">
+    
+    <!-- STACKED COMMAND HEADER FIX -->
+    <header class="glass-panel p-4 px-6 animate-slide-up flex flex-col gap-4" style="animation-delay: 0.1s;">
+      
+      <!-- Top Row: Profile & Filters -->
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 w-full border-b border-[#00e5ff]/20 pb-4">
+        <div class="flex items-center space-x-3 min-w-0 w-full sm:w-auto">
+            <div class="relative group cursor-pointer shrink-0">
+                <div class="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center text-[#00e5ff] font-black text-xl border-2 border-[#00e5ff] shadow-[0_0_15px_rgba(0,229,255,0.6)]">V</div>
+                <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#fbbf24] border-2 border-[#030508] rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse"></div>
+            </div>
+            <div class="flex-col min-w-0 flex">
+                <h1 class="text-lg font-black tracking-tight text-white bubbly-text truncate">Welcome back, <span class="text-[#00e5ff]">Vidhun</span></h1>
+                <p class="text-[9px] text-[#00e5ff] font-bold uppercase tracking-widest flex items-center mt-0.5 truncate"><i data-lucide="cpu" class="w-3 h-3 mr-1 text-[#00e5ff]"></i> C.A.S.P.E.R. Online</p>
+            </div>
+        </div>
+        <div class="relative w-full sm:w-[150px] shrink-0">
+            <select class="universal-month-filter bg-black/60 border border-[#00e5ff]/30 rounded-xl px-3 py-2 pr-8 text-xs font-bold text-[#00e5ff] uppercase tracking-widest outline-none cursor-pointer appearance-none w-full truncate shadow-[inset_0_0_10px_rgba(0,229,255,0.2)]" onchange="applyUniversalFilter(this.value)"></select>
+            <i data-lucide="calendar" class="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#00e5ff] pointer-events-none"></i>
+        </div>
+      </div>
+      
+      <!-- Bottom Row: Navigation Tabs -->
+      <div class="flex w-full space-x-2 bg-black/40 p-2 rounded-xl border border-[#00e5ff]/20 shadow-inner overflow-x-auto hide-scroll">
+        <button onclick="switchMainView('dashboard')" id="navDashboard" class="nav-btn active flex-1 px-4 py-2.5 rounded-lg font-bold text-sm text-white uppercase tracking-wider border border-white/20 bg-white/10 shadow-lg whitespace-nowrap"><i data-lucide="activity" class="inline w-4 h-4 mr-1.5"></i> Dashboard</button>
+        <button onclick="switchMainView('investments')" id="navInvestments" class="nav-btn flex-1 px-4 py-2.5 rounded-lg font-bold text-sm text-gray-500 hover:text-white uppercase tracking-wider border border-transparent whitespace-nowrap"><i data-lucide="pie-chart" class="inline w-4 h-4 mr-1.5"></i> Investments</button>
+        <button onclick="switchMainView('wishlist')" id="navWishlist" class="nav-btn flex-1 px-4 py-2.5 rounded-lg font-bold text-sm text-gray-500 hover:text-white uppercase tracking-wider border border-transparent whitespace-nowrap"><i data-lucide="target" class="inline w-4 h-4 mr-1.5"></i> Wishlist</button>
+        <button onclick="switchMainView('media')" id="navMedia" class="nav-btn flex-1 px-4 py-2.5 rounded-lg font-bold text-sm text-gray-500 hover:text-white uppercase tracking-wider border border-transparent whitespace-nowrap"><i data-lucide="database" class="inline w-4 h-4 mr-1.5"></i> Vault</button>
+        <button onclick="switchMainView('workspace')" id="navWorkspace" class="nav-btn flex-1 px-4 py-2.5 rounded-lg font-bold text-sm text-gray-500 hover:text-white uppercase tracking-wider border border-transparent whitespace-nowrap"><i data-lucide="code" class="inline w-4 h-4 mr-1.5"></i> Workspace</button>
+        <button onclick="switchMainView('growth')" id="navGrowth" class="nav-btn flex-1 px-4 py-2.5 rounded-lg font-bold text-sm text-gray-500 hover:text-white uppercase tracking-wider border border-transparent whitespace-nowrap"><i data-lucide="zap" class="inline w-4 h-4 mr-1.5"></i> Growth</button>
+      </div>
+    </header>
+
+    <main id="mainContainer" class="view-container">
+    
+    <!-- DASHBOARD VIEW -->
+    <div id="viewDashboard" class="view-card active space-y-4 md:space-y-6">
+      
+      <div id="pendingContainer" class="hidden mb-4 animate-slide-up" style="animation-delay: 0.2s;">
+          <div class="bg-gray-900 border border-[#00e5ff]/50 rounded-xl p-4 md:p-6 shadow-[0_0_40px_rgba(0,229,255,0.2)]">
+               <h3 class="text-xs font-bold text-[#00e5ff] mb-4 uppercase tracking-widest flex items-center"><div class="w-2 h-2 rounded-full bg-[#00e5ff] mr-2 animate-pulse"></div> C.A.S.P.E.R. Queue</h3>
+               <div id="pending-list" class="space-y-3 relative z-10"></div>
+          </div>
+      </div>
+
+      <div class="flex flex-col xl:flex-row gap-4 md:gap-6 pb-4 relative z-20 animate-slide-up" style="animation-delay: 0.3s;">
+        <!-- Left: Liquid Assets -->
+        <div class="glass-panel p-6 md:p-8 flex flex-col justify-center flex-1 min-w-[280px]">
+          <div class="flex justify-between items-start mb-4"><h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center"><i data-lucide="zap" class="w-4 h-4 text-[#fbbf24] mr-2"></i> Total Liquid Assets <span class="info-icon" data-info="Calculated by summing all income and subtracting all expenses across all accounts except the emergency fund."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h3></div>
+          <div class="w-full overflow-hidden flex items-center">
+             <h1 id="netBalance" class="bubbly-text text-4xl lg:text-5xl text-[#00e5ff] mt-2 whitespace-nowrap tracking-tight truncate">₹0</h1>
+          </div>
+          <div class="mt-4 pt-4 border-t border-[#00e5ff]/20 flex flex-wrap justify-between items-center gap-2">
+             <div class="flex items-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                 <div class="w-2 h-2 rounded-full bg-[#ef4444] mr-2 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+                 Emergency Fund <span class="info-icon" data-info="Emergency Capital strictly isolated from general liquid view."><i data-lucide="help-circle" class="w-4 h-4"></i></span>
+             </div>
+             <div class="flex items-center gap-2">
+                 <h3 id="emergencyFundBalance" class="text-base md:text-lg font-black text-[#fbbf24] truncate">₹0</h3>
+                 <button onclick="editEmergencyFund()" class="bg-white/5 hover:bg-[#00e5ff]/20 text-[#00e5ff] p-1.5 rounded border border-[#00e5ff]/30 transition-colors" title="Set Exact Absolute Balance"><i data-lucide="edit-3" class="w-3 h-3"></i></button>
+                 <button onclick="addEmergencyFund()" class="bg-white/5 hover:bg-[#00e5ff]/20 text-[#00e5ff] p-1.5 rounded border border-[#00e5ff]/30 transition-colors" title="Inject Manual Capital"><i data-lucide="plus" class="w-3 h-3"></i></button>
+                 <button onclick="setEmergencyAutoPilot()" class="bg-[#00e5ff]/10 text-[#00e5ff] hover:bg-[#00e5ff] hover:text-black p-1.5 rounded border border-[#00e5ff]/30 transition-colors shadow-[0_0_10px_rgba(0,229,255,0.3)]" title="Configure Auto-Pilot"><i data-lucide="bot" class="w-3 h-3"></i></button>
+             </div>
+          </div>
+        </div>
+        
+        <!-- Center: Period Cashflow -->
+        <div class="glass-panel p-6 md:p-8 flex flex-col justify-center flex-1 min-w-[280px]">
+          <div class="flex justify-between items-center mb-6 relative z-10 border-b border-[#00e5ff]/20 pb-4">
+              <h3 class="text-sm font-black text-gray-300 uppercase tracking-widest flex items-center">Period Cashflow <span class="info-icon ml-2" data-info="Real-time inbound and outbound capital for the globally selected timeframe."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h3>
+              <div class="px-3 py-1.5 bg-black/60 border border-[#00e5ff]/30 rounded flex items-center shadow-inner ml-2 flex-shrink-0">
+                  <span id="weatherIcon"><i data-lucide="cloud" class="w-4 h-4 text-[#fbbf24] mr-2"></i></span>
+                  <span id="weatherText" class="text-[10px] text-[#fbbf24] uppercase font-black tracking-widest ml-1">Stable</span>
+                  <!-- FULLY RESTORED STABILITY TOOLTIP -->
+                  <span class="info-icon ml-2" data-info="System Stability Modes:<br><br><span style='color:#00e5ff; font-weight:bold;'>ELITE (≥90)</span>: Optimum scaling & highly secured liquidity.<br><br><span style='color:#34d399; font-weight:bold;'>EXCELLENT (75-89)</span>: Strong operations. High savings capture.<br><br><span style='color:#facc15; font-weight:bold;'>STABLE (50-74)</span>: Standard operational capacity. Needs monitoring.<br><br><span style='color:#fb923c; font-weight:bold;'>AT RISK (30-49)</span>: High burn rate. System efficiency degrading.<br><br><span style='color:#ef4444; font-weight:bold;'>CRITICAL (<30)</span>: Severe risk of liquidity exhaustion. Halt spending."><i data-lucide="help-circle" class="w-4 h-4 text-[#fbbf24]"></i></span>
+              </div>
+          </div>
+          <div class="flex flex-row gap-3 mt-2">
+             <div class="flex-1 flex flex-col items-center justify-center bg-black/60 px-3 py-4 rounded border border-[#10b981]/30 shadow-[inset_0_0_15px_rgba(16,185,129,0.1)] min-w-0">
+                 <div class="flex items-center gap-1 mb-1">
+                     <i data-lucide="arrow-down-left" class="w-3.5 h-3.5 text-[#10b981]"></i>
+                     <span class="text-[10px] text-[#10b981] uppercase font-black tracking-widest">Income</span>
+                 </div>
+                 <h3 id="currMonthIncome" class="text-xl md:text-2xl font-black text-[#10b981] tracking-tight truncate w-full text-center drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]">₹0</h3>
+             </div>
+             <div class="flex-1 flex flex-col items-center justify-center bg-black/60 px-3 py-4 rounded border border-[#ef4444]/30 shadow-[inset_0_0_15px_rgba(239,68,68,0.1)] min-w-0">
+                 <div class="flex items-center gap-1 mb-1">
+                     <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 text-[#ef4444]"></i>
+                     <span class="text-[10px] text-[#ef4444] uppercase font-black tracking-widest">Expense</span>
+                 </div>
+                 <h3 id="currMonthExpense" class="text-xl md:text-2xl font-black text-[#ef4444] tracking-tight truncate w-full text-center drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]">₹0</h3>
+             </div>
+          </div>
+          <div class="mt-5 border-t border-[#00e5ff]/20 pt-3 flex items-center">
+              <p id="currMonthNet" class="text-xs font-black uppercase tracking-widest text-[#00e5ff] truncate">NET: + ₹0 SAVED</p>
+          </div>
+        </div>
+
+        <!-- Right: Allocation Matrix -->
+        <div class="glass-panel p-6 md:p-8 flex flex-col justify-center bg-[rgba(0,229,255,0.02)] flex-1 min-w-[280px]">
+          <div class="flex justify-between items-start gap-2 mb-4 border-b border-[#00e5ff]/20 pb-4">
+            <div class="flex-1 min-w-0 pr-2 flex flex-col">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest truncate flex items-center">Allocation Matrix 
+                    <span class="info-icon ml-1" data-info="Splits your income into 50/25/20/5 buckets, mapping ledger expenses against limits. Use the wallet icon to force a manual income amount instead of the auto-calculated one."><i data-lucide="help-circle" class="w-4 h-4"></i></span>
+                </h3>
+                <span id="allocIncomeDisplay" class="text-[10px] font-bold text-[#fbbf24] tracking-widest uppercase mt-1">Income: ₹0</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="setManualAllocationIncome()" class="text-[#00e5ff] hover:bg-[#00e5ff] hover:text-black transition-all p-2 flex-shrink-0 bg-[#00e5ff]/10 rounded border border-[#00e5ff]/30 shadow-[0_0_10px_rgba(0,229,255,0.2)]" title="Set Manual Income Override"><i data-lucide="wallet" class="w-4 h-4"></i></button>
+                <button onclick="configureAllocation()" class="text-[#00e5ff] hover:bg-[#00e5ff] hover:text-black transition-all p-2 flex-shrink-0 bg-[#00e5ff]/10 rounded border border-[#00e5ff]/30 shadow-[0_0_10px_rgba(0,229,255,0.2)]" title="Configure Matrix Categories"><i data-lucide="settings-2" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+          <div class="flex-grow flex flex-col justify-center space-y-4">
+             <div>
+                <div class="flex justify-between text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5"><span class="text-[#0ea5e9] whitespace-nowrap">Needs (50%)</span><span id="allocNeeds" class="pl-2 truncate">₹0 / ₹0</span></div>
+                <div class="w-full bg-black/60 rounded h-1.5 border border-[#0ea5e9]/30 overflow-hidden"><div id="progNeeds" class="bg-[#0ea5e9] h-full transition-all shadow-[0_0_8px_rgba(14,165,233,0.8)]" style="width: 0%"></div></div>
+             </div>
+             <div>
+                <div class="flex justify-between text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5"><span class="text-[#a855f7] whitespace-nowrap">Wants (25%)</span><span id="allocWants" class="pl-2 truncate">₹0 / ₹0</span></div>
+                <div class="w-full bg-black/60 rounded h-1.5 border border-[#a855f7]/30 overflow-hidden"><div id="progWants" class="bg-[#a855f7] h-full transition-all shadow-[0_0_8px_rgba(168,85,247,0.8)]" style="width: 0%"></div></div>
+             </div>
+             <div>
+                <div class="flex justify-between text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5"><span class="text-[#10b981] whitespace-nowrap">Wealth (20%)</span><span id="allocWealth" class="pl-2 truncate">₹0 / ₹0</span></div>
+                <div class="w-full bg-black/60 rounded h-1.5 border border-[#10b981]/30 overflow-hidden"><div id="progWealth" class="bg-[#10b981] h-full transition-all shadow-[0_0_8px_rgba(16,185,129,0.8)]" style="width: 0%"></div></div>
+             </div>
+             <div class="cursor-pointer hover:bg-white/5 p-1 -m-1 rounded transition-colors" onclick="switchMainView('wishlist')" title="Click to view Wishlist targets">
+                <div class="flex justify-between text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1.5"><span class="text-[#ef4444] flex items-center whitespace-nowrap">Carefree (5%)</span><span id="allocCarefree" class="pl-2 truncate">₹0 / ₹0</span></div>
+                <div class="w-full bg-black/60 rounded h-1.5 border border-[#ef4444]/30 overflow-hidden"><div id="progCarefree" class="bg-[#ef4444] h-full transition-all shadow-[0_0_8px_rgba(239,68,68,0.8)]" style="width: 0%"></div></div>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry Deck -->
+      <div class="mt-4 mb-4 animate-slide-up relative" style="animation-delay: 0.4s;">
+          <div class="flex justify-between items-end px-2 mb-2">
+              <h2 class="text-sm font-bold text-[#00e5ff] uppercase tracking-widest flex items-center">Micro-Stats Telemetry <span class="info-icon" data-info="Calculates predictive data points based on your current liquid volume and run rate."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h2>
+              <span id="statsIndicator" class="text-[10px] text-gray-500 font-bold tracking-widest uppercase">01 / 06</span>
+          </div>
+          <div class="relative w-full flex items-center justify-center mb-2">
+              <button onclick="prevStatsStack()" class="absolute left-0 md:left-4 z-50 p-2.5 bg-black/50 hover:bg-[#00e5ff]/20 rounded border border-[#00e5ff]/30 text-[#00e5ff] backdrop-blur-md transition-all shadow-[0_0_10px_rgba(0,229,255,0.2)]"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+              
+              <div class="stats-stack-container" id="statsDeckContainer">
+                  <div class="stats-stack-card active glass-panel p-6 flex flex-col items-center justify-center text-center">
+                      <p class="text-xs text-gray-400 font-bold tracking-widest mb-3 flex items-center justify-center w-full uppercase"><i data-lucide="activity" class="w-4 h-4 mr-1.5 text-[#00e5ff]"></i> Health</p>
+                      <p id="healthScore" class="text-5xl font-black text-[#00e5ff] truncate w-full uppercase bubbly-text drop-shadow-[0_0_10px_rgba(0,229,255,0.5)]">0/100</p>
+                  </div>
+                  <div class="stats-stack-card glass-panel p-6 flex flex-col items-center justify-center text-center">
+                      <p class="text-xs text-gray-400 font-bold tracking-widest mb-3 flex items-center justify-center w-full uppercase"><i data-lucide="flame" class="w-4 h-4 mr-1.5 text-[#ef4444]"></i> Daily Burn</p>
+                      <p id="statBurnRate" class="text-5xl font-black text-white truncate w-full bubbly-text">₹0</p>
+                  </div>
+                  <div class="stats-stack-card glass-panel p-6 flex flex-col items-center justify-center text-center">
+                      <p class="text-xs text-gray-400 font-bold tracking-widest mb-3 flex items-center justify-center w-full uppercase"><i data-lucide="trending-up" class="w-4 h-4 mr-1.5 text-[#10b981]"></i> Velocity</p>
+                      <p id="statSavingsRate" class="text-5xl font-black text-white truncate w-full bubbly-text">0%</p>
+                  </div>
+                  <div class="stats-stack-card glass-panel p-6 flex flex-col items-center justify-center text-center">
+                      <p class="text-xs text-gray-400 font-bold tracking-widest mb-3 flex items-center justify-center w-full uppercase"><i data-lucide="repeat" class="w-4 h-4 mr-1.5 text-[#fbbf24]"></i> Liabilities</p>
+                      <p id="statLiabilities" class="text-5xl font-black text-white truncate w-full bubbly-text">₹0</p>
+                  </div>
+                  <div class="stats-stack-card glass-panel p-6 flex flex-col items-center justify-center text-center">
+                      <p class="text-xs text-gray-400 font-bold tracking-widest mb-3 flex items-center justify-center w-full uppercase"><i data-lucide="clock" class="w-4 h-4 mr-1.5 text-[#a855f7]"></i> Runway</p>
+                      <p id="statRunway" class="text-5xl font-black text-white truncate w-full bubbly-text">0 DAYS</p>
+                  </div>
+                  <div class="stats-stack-card glass-panel p-6 flex flex-col items-center justify-center text-center">
+                      <p class="text-xs text-gray-400 font-bold tracking-widest mb-3 flex items-center justify-center w-full uppercase"><i data-lucide="pie-chart" class="w-4 h-4 mr-1.5 text-[#0ea5e9]"></i> Top Expense</p>
+                      <p id="statTopExpenseName" class="text-3xl font-black text-white truncate w-full tracking-wider mt-1 bubbly-text">OTHER</p>
+                  </div>
+              </div>
+              <button onclick="nextStatsStack()" class="absolute right-0 md:right-4 z-50 p-2.5 bg-black/50 hover:bg-[#00e5ff]/20 rounded border border-[#00e5ff]/30 text-[#00e5ff] backdrop-blur-md transition-all shadow-[0_0_10px_rgba(0,229,255,0.2)]"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+          </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-4 animate-slide-up items-stretch" style="animation-delay: 0.5s;">
+          <!-- CC Widget -->
+          <div class="glass-panel p-6 md:p-8 flex flex-col h-full min-h-[220px]">
+              <div class="flex justify-between items-start mb-4">
+                  <h3 class="text-sm font-bold text-[#a855f7] flex items-center min-w-0 uppercase tracking-widest"><i data-lucide="credit-card" class="w-4 h-4 mr-2 flex-shrink-0"></i> <span class="truncate">Active Credit Card</span><span class="info-icon ml-2" data-info="Monitors your active credit card utilization against your defined limit. Keeps utilization below 30% to protect credit score."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h3>
+                  <div class="flex items-center gap-2">
+                      <button onclick="editCCBalance()" class="text-gray-400 hover:text-white transition-all bg-white/5 rounded p-1.5 flex-shrink-0 border border-white/5" title="Force Set Current Exact Spent Balance"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                      <button onclick="setCCLimit()" class="text-gray-400 hover:text-white transition-all bg-white/5 rounded p-1.5 flex-shrink-0 border border-white/5" title="Set Limit"><i data-lucide="settings" class="w-4 h-4"></i></button>
+                  </div>
+              </div>
+              <div class="w-full overflow-hidden flex items-center mt-2 mb-4">
+                  <h2 id="ccSpent" class="bubbly-text text-4xl lg:text-5xl text-white whitespace-nowrap tracking-tight truncate drop-shadow-[0_0_10px_rgba(168,85,247,0.4)]">₹0</h2>
+              </div>
+              <div class="mt-auto pt-4 border-t border-white/10 flex flex-col justify-end">
+                  <div class="flex justify-between items-end mb-2.5">
+                      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest block">Current Bal</span>
+                      <div class="text-right flex items-center gap-3">
+                          <span id="ccLimitText" class="text-[10px] font-bold text-[#a855f7] uppercase tracking-widest block">Limit: ₹0</span>
+                          <button onclick="payCCBill()" class="bg-[#a855f7]/20 text-[#a855f7] hover:bg-[#a855f7] hover:text-black px-2.5 py-1.5 rounded text-[10px] font-bold border border-[#a855f7]/50 transition-colors uppercase tracking-widest flex items-center shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.2)]"><i data-lucide="check-circle" class="w-3 h-3 mr-1"></i> Pay Bill</button>
+                      </div>
+                  </div>
+                  <div class="w-full bg-black/60 rounded h-1.5 border border-[#a855f7]/30 overflow-hidden relative"><div id="ccProgress" class="bg-[#a855f7] h-full transition-all duration-1000 shadow-[0_0_15px_rgba(168,85,247,0.8)] w-0"></div></div>
+              </div>
+          </div>
+          
+          <!-- AI Engine -->
+          <div class="glass-panel p-6 md:p-8 flex flex-col h-full min-h-[220px]">
+              <div class="flex flex-wrap sm:flex-nowrap justify-between items-start sm:items-center mb-4 gap-4 shrink-0 w-full border-b border-[#00e5ff]/20 pb-4">
+                  <div class="flex flex-col min-w-0">
+                      <h3 class="text-sm font-bold text-[#00e5ff] flex items-center uppercase tracking-widest truncate">
+                          C.A.S.P.E.R. ENGINE <span class="info-icon ml-2 shrink-0" data-info="Calculated asset security and personal expense recorder. Interfaces directly with gemini API."><i data-lucide="help-circle" class="w-4 h-4"></i></span>
+                      </h3>
+                      <div class="text-[9px] text-[#00e5ff] uppercase tracking-widest mt-1 font-bold truncate">Calculated Asset Security & Personal Expense Recorder</div>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 shrink-0">
+                      <button onclick="getCASPERInsights();" id="aiButton" class="bg-[#00e5ff]/10 text-[#00e5ff] hover:bg-[#00e5ff] hover:text-black px-3 py-1.5 rounded text-[10px] font-bold border border-[#00e5ff]/30 flex items-center transition-colors uppercase tracking-widest shadow-[0_0_10px_rgba(0,229,255,0.2)]"><i data-lucide="sparkles" class="w-3 h-3 mr-1"></i> Analyze</button>
+                      <button onclick="getCASPERForecast();" id="aiForecastBtn" class="bg-[#00e5ff]/10 text-[#00e5ff] hover:bg-[#00e5ff] hover:text-black px-3 py-1.5 rounded text-[10px] font-bold border border-[#00e5ff]/30 flex items-center transition-colors uppercase tracking-widest shadow-[0_0_10px_rgba(0,229,255,0.2)]"><i data-lucide="brain-circuit" class="w-3 h-3 mr-1"></i> Forecast</button>
+                  </div>
+              </div>
+              <div id="aiTerminal" class="w-full flex-grow overflow-y-auto p-4 bg-black/60 border border-[#00e5ff]/20 rounded text-sm text-[#00e5ff] leading-relaxed ledger-scrollbar shadow-[inset_0_0_20px_rgba(0,229,255,0.05)]">
+                  <div class="flex flex-col items-center justify-center h-full opacity-60">
+                      <i data-lucide="cpu" class="w-12 h-12 mb-3 text-[#00e5ff] animate-pulse"></i>
+                      <p class="text-center font-bold text-xs uppercase tracking-widest text-[#00e5ff]">System Standing By...</p>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <div class="mt-10 mb-2 animate-slide-up relative" style="animation-delay: 0.6s;">
+          <div class="flex justify-between items-end px-2 mb-3">
+              <h2 class="text-lg font-bold uppercase tracking-wider text-[#00e5ff] flex items-center">Macro Scanners <span class="info-icon" data-info="Swipe or click arrows to navigate through operational analytics."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h2>
+              <span id="deckIndicator" class="text-[10px] text-gray-500 font-bold tracking-widest uppercase">01 / 08</span>
+          </div>
+          
+          <div class="relative w-full flex items-center justify-center mb-8">
+              <button onclick="prevChartStack()" class="absolute left-2 md:left-4 z-50 p-3 bg-black/50 hover:bg-[#00e5ff]/20 rounded border border-[#00e5ff]/30 text-[#00e5ff] backdrop-blur-md transition-all shadow-[0_0_10px_rgba(0,229,255,0.2)]"><i data-lucide="chevron-left"></i></button>
+              
+              <div class="chart-stack-container" id="chartDeckContainer">
+                  <div class="chart-stack-card active glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#10b981]">
+                      <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-[#10b981] uppercase tracking-widest flex items-center">Savings Velocity</h3><button onclick="openChartModal('savingsTrendChart', 'Savings Velocity History');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button></div>
+                      <div class="h-[260px] relative flex justify-center w-full overflow-hidden"><canvas id="savingsTrendChart"></canvas></div>
+                  </div>
+                  <div class="chart-stack-card glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#fbbf24]">
+                      <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-[#fbbf24] uppercase tracking-widest flex items-center">Burn Trajectory</h3><button onclick="openChartModal('burnTrajectoryChart', 'Burn Trajectory vs Monthly Limit');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button></div>
+                      <div class="h-[260px] relative flex justify-center w-full overflow-hidden"><canvas id="burnTrajectoryChart"></canvas></div>
+                  </div>
+                  <div class="chart-stack-card glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#a855f7]">
+                      <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-[#a855f7] uppercase tracking-widest flex items-center">Category Spread</h3><button onclick="openChartModal('polarChart', 'Polar Area Distribution');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button></div>
+                      <div class="h-[260px] relative flex justify-center w-full overflow-hidden"><canvas id="polarChart"></canvas></div>
+                  </div>
+                  <div class="chart-stack-card glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#0ea5e9]">
+                      <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-[#0ea5e9] uppercase tracking-widest flex items-center">Cumulative Wealth</h3><button onclick="openChartModal('trendChart', 'Cumulative Net Worth Over Time');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button></div>
+                      <div class="h-[260px] relative flex justify-center w-full overflow-hidden"><canvas id="trendChart"></canvas></div>
+                  </div>
+                  <div class="chart-stack-card glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#00e5ff]">
+                      <div class="flex justify-between items-center mb-4 gap-2">
+                        <h3 class="text-xs font-bold text-[#00e5ff] uppercase tracking-widest flex items-center">Distribution</h3>
+                        <div class="flex items-center gap-2">
+                            <select class="universal-month-filter bg-black/60 text-[9px] font-bold text-[#00e5ff] uppercase rounded px-2 py-1.5 border border-[#00e5ff]/30 outline-none cursor-pointer w-[90px] truncate" onchange="applyUniversalFilter(this.value)"><option value="current">SELECTED</option><option value="all">ALL TIME</option></select>
+                            <button onclick="openChartModal('walletChart', 'Expense Analytics');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button>
+                        </div>
+                      </div>
+                      <div class="flex flex-row items-center justify-between gap-4 h-[250px] w-full overflow-hidden">
+                          <div class="w-1/2 h-full relative flex items-center justify-center">
+                              <canvas id="walletChart"></canvas>
+                              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                  <span class="text-[#00e5ff] text-[8px] font-bold uppercase tracking-widest">Spent</span>
+                                  <h2 id="chartCenterText" class="text-sm font-black text-white truncate w-full text-center px-1 max-w-[80px] drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]">₹0</h2>
+                              </div>
+                          </div>
+                          <div id="topInsights" class="w-1/2 space-y-2 overflow-y-auto h-full pr-2 tracking-wider ledger-scrollbar"></div>
+                      </div>
+                  </div>
+                  <div class="chart-stack-card glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#ec4899]">
+                      <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-[#ec4899] uppercase tracking-widest flex items-center">Account Utilization</h3><button onclick="openChartModal('accountChart', 'Account Utilization');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button></div>
+                      <div class="h-[250px] relative flex justify-center w-full overflow-hidden"><canvas id="accountChart"></canvas></div>
+                  </div>
+                  <div class="chart-stack-card glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#10b981]">
+                      <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-[#10b981] uppercase tracking-widest flex items-center">7-Day Cashflow</h3><div class="flex items-center gap-2"><button onclick="openAllTimeChart()" class="text-[9px] text-[#10b981] hover:bg-[#10b981] hover:text-black font-bold bg-[#10b981]/10 px-2.5 py-1.5 rounded border border-[#10b981]/30 uppercase tracking-widest transition-colors">All-Time Line</button><button onclick="openChartModal('cashflowChart', 'Recent 7-Day Cashflow');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button></div></div>
+                      <div class="h-[250px] relative flex justify-center w-full overflow-hidden"><canvas id="cashflowChart"></canvas></div>
+                  </div>
+                  <div class="chart-stack-card glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#f97316]">
+                      <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-[#f97316] uppercase tracking-widest flex items-center">Month Over Month</h3><button onclick="openChartModal('monthlyTrendChart', 'Monthly Spend Comparison');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button></div>
+                      <div class="h-[250px] relative flex justify-center w-full overflow-hidden"><canvas id="monthlyTrendChart"></canvas></div>
+                  </div>
+                  <div class="chart-stack-card glass-panel p-5 md:p-6 flex flex-col justify-between border-t-2 border-t-[#6366f1]">
+                      <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-[#6366f1] uppercase tracking-widest flex items-center">Weekly Rhythm</h3><button onclick="openChartModal('weeklyRhythmChart', 'Weekly Rhythm');" class="text-gray-400 hover:text-white bg-white/5 p-1.5 rounded border border-white/5"><i data-lucide="maximize-2" class="w-3 h-3"></i></button></div>
+                      <div class="h-[250px] relative flex justify-center w-full overflow-hidden"><canvas id="weeklyRhythmChart"></canvas></div>
+                  </div>
+              </div>
+              <button onclick="nextChartStack()" class="absolute right-2 md:right-4 z-50 p-3 bg-black/50 hover:bg-[#00e5ff]/20 rounded-full border border-[#00e5ff]/30 text-[#00e5ff] backdrop-blur-md transition-all shadow-[0_0_10px_rgba(0,229,255,0.2)]"><i data-lucide="chevron-right"></i></button>
+          </div>
+      </div>
+
+      <!-- LEDGER DATA & INPUT AREA -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mt-6">
+        <div class="lg:col-span-2">
+          <div class="glass-panel p-4 md:p-6 h-full animate-slide-up flex flex-col" style="animation-delay: 0.7s;">
+            <div class="flex flex-col gap-4 mb-4">
+               <div class="flex justify-between items-center flex-wrap gap-2">
+                   <h3 class="text-xs font-bold text-[#00e5ff] uppercase tracking-widest flex items-center">Main Ledger <span class="info-icon" data-info="Historical log of all transactions. You can query data using the search parameter."><i data-lucide="help-circle" class="w-4 h-4"></i></span> <span id="recordCount" class="bg-[#00e5ff]/20 px-2 py-0.5 rounded ml-2 text-[#00e5ff] border border-[#00e5ff]/30">0</span></h3>
+                   
+                   <div class="flex items-center space-x-2">
+                       <button onclick="exportBackupJSON()" class="bg-[#10b981]/10 text-[#10b981] hover:bg-[#10b981] hover:text-black px-3 py-1.5 rounded text-[9px] font-bold border border-[#10b981]/30 transition-all flex items-center uppercase tracking-widest" title="Download Local JSON Backup"><i data-lucide="download-cloud" class="w-3 h-3 mr-1"></i> Backup</button>
+                       <button onclick="undoLastDelete()" id="undoBtn" class="bg-white/5 text-gray-500 hover:text-white px-3 py-1.5 rounded text-[9px] font-bold border border-white/10 transition-all flex items-center uppercase tracking-widest opacity-50 cursor-not-allowed" title="Undo Last Deletion"><i data-lucide="undo-2" class="w-3 h-3 mr-1"></i> Undo</button>
+                       <button onclick="nukeLedger()" class="bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444] hover:text-black px-3 py-1.5 rounded text-[9px] font-bold border border-[#ef4444]/30 transition-all flex items-center uppercase tracking-widest" title="Delete All Data"><i data-lucide="trash-2" class="w-3 h-3 mr-1"></i> Purge</button>
+                       <div class="w-px h-4 bg-white/10 mx-1"></div>
+                       <button onclick="openAIReport()" class="bg-[#00e5ff]/10 hover:bg-[#00e5ff] hover:text-black text-[#00e5ff] p-1.5 rounded border border-[#00e5ff]/30 transition-all" title="Full Report"><i data-lucide="file-text" class="w-4 h-4"></i></button>
+                   </div>
+               </div>
+               
+               <div class="flex flex-col md:flex-row gap-2">
+                   <div class="flex space-x-2 flex-grow">
+                       <div class="relative min-w-0 flex-1 max-w-[160px]">
+                           <select class="universal-month-filter w-full glass-input rounded py-2.5 px-3 pr-8 text-sm text-[#00e5ff] font-bold uppercase tracking-wider appearance-none truncate" onchange="applyUniversalFilter(this.value)"></select>
+                           <i data-lucide="chevron-down" class="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#00e5ff] pointer-events-none"></i>
+                       </div>
+                       <div class="relative flex-grow min-w-0">
+                           <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#00e5ff]"></i>
+                           <input type="text" id="searchInput" placeholder="Search parameters..." class="w-full glass-input rounded py-2.5 pl-9 pr-3 text-sm text-white font-medium truncate" oninput="updateSearch(this.value)"/>
+                       </div>
+                   </div>
+                   <button onclick="toggleSort()" class="bg-white/5 hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] text-gray-400 border border-white/10 hover:border-[#00e5ff]/30 px-4 py-2 rounded text-[10px] uppercase font-bold tracking-widest flex items-center transition-colors flex-shrink-0 justify-center">
+                       <i data-lucide="arrow-down-up" class="w-3 h-3 mr-1.5"></i> <span id="sortLabel">Newest</span>
+                   </button>
+               </div>
+            </div>
+            <div class="flex space-x-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+                <button onclick="applyFilter('all')" class="px-4 py-1.5 rounded text-[10px] font-bold bg-[#00e5ff]/10 text-[#00e5ff] whitespace-nowrap hover:bg-[#00e5ff] hover:text-black uppercase tracking-widest border border-[#00e5ff]/30 transition-colors">All</button>
+                <button onclick="applyFilter('income')" class="px-4 py-1.5 rounded text-[10px] font-bold bg-[#10b981]/10 text-[#10b981] whitespace-nowrap hover:bg-[#10b981] hover:text-black uppercase tracking-widest border border-[#10b981]/30 transition-colors">Income</button>
+                <button onclick="applyFilter('expense')" class="px-4 py-1.5 rounded text-[10px] font-bold bg-[#ef4444]/10 text-[#ef4444] whitespace-nowrap hover:bg-[#ef4444] hover:text-black uppercase tracking-widest border border-[#ef4444]/30 transition-colors">Expense</button>
+                <button onclick="applyFilter('High Impact')" class="px-4 py-1.5 rounded text-[10px] font-bold bg-[#a855f7]/10 text-[#a855f7] whitespace-nowrap hover:bg-[#a855f7] hover:text-black uppercase tracking-widest border border-[#a855f7]/30 transition-colors">> ₹10k</button>
+            </div>
+            <div id="ledgerList" class="flex-grow h-[400px] overflow-y-auto pr-2 relative tracking-wider ledger-scrollbar"></div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-1 space-y-4 md:space-y-6">
+            <div class="glass-panel p-5 md:p-6 sticky top-6 animate-slide-up" style="animation-delay: 0.8s;">
+              <h3 class="text-xs font-bold text-[#00e5ff] uppercase tracking-widest mb-4 flex items-center"><i data-lucide="sparkles" class="w-4 h-4 mr-1.5"></i> Data Entry Protocol</h3>
+              
+              <div class="flex gap-2 mb-6 border-b border-[#00e5ff]/20 pb-6">
+                  <button type="button" onclick="openBulkSMSModal()" class="flex-1 bg-[#0284c7]/10 text-[#0284c7] hover:bg-[#0284c7] hover:text-white p-3 rounded border border-[#0284c7]/30 flex justify-center items-center gap-2 font-bold text-[10px] uppercase tracking-widest transition-all shadow-inner">
+                      <i data-lucide="message-square" class="w-4 h-4"></i> Bulk SMS
+                  </button>
+                  <button type="button" onclick="document.getElementById('csvInput').click()" class="flex-1 bg-[#10b981]/10 text-[#10b981] hover:bg-[#10b981] hover:text-black p-3 rounded border border-[#10b981]/30 flex justify-center items-center gap-2 font-bold text-[10px] uppercase tracking-widest transition-all shadow-inner">
+                      <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> CSV Data
+                  </button>
+                  <input type="file" id="csvInput" accept=".csv" class="hidden" onchange="handleCSVUpload(event)">
+              </div>
+
+              <div class="flex justify-between items-center mb-4"><h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">Manual Upload <span class="info-icon" data-info="Direct system override for capital changes."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h3></div>
+
+              <div class="flex rounded bg-black/60 p-1 mb-6 border border-white/5"><button type="button" id="tabExpense" class="flex-1 py-2 text-[10px] font-bold rounded bg-white/10 text-[#ef4444] border border-[#ef4444]/30 uppercase tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]" onclick="switchTab('expense')">Expense</button><button type="button" id="tabIncome" class="flex-1 py-2 text-[10px] font-bold rounded text-gray-500 hover:text-white uppercase tracking-widest border border-transparent" onclick="switchTab('income')">Income</button></div>
+              <form id="transactionForm" class="space-y-4 relative z-10">
+                <div>
+                  <div class="flex gap-2 mb-3 overflow-x-auto scrollbar-hide"><button type="button" onclick="addAmount(100)" class="flex-1 min-w-[60px] bg-white/5 hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] text-gray-400 text-[10px] font-bold py-2 rounded border border-white/10 transition-colors">+100</button><button type="button" onclick="addAmount(500)" class="flex-1 min-w-[60px] bg-white/5 hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] text-gray-400 text-[10px] font-bold py-2 rounded border border-white/10 transition-colors">+500</button><button type="button" onclick="addAmount(1000)" class="flex-1 min-w-[60px] bg-white/5 hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] text-gray-400 text-[10px] font-bold py-2 rounded border border-white/10 transition-colors">+1000</button><button type="button" onclick="addAmount(5000)" class="flex-1 min-w-[60px] bg-white/5 hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] text-gray-400 text-[10px] font-bold py-2 rounded border border-white/10 transition-colors">+5000</button></div>
+                  <div class="relative flex items-center bg-black/60 rounded border border-white/10 focus-within:border-[#00e5ff] focus-within:shadow-[0_0_15px_rgba(0,229,255,0.2)] transition-all overflow-hidden pr-1"><span id="currencySymbol" class="pl-4 text-2xl font-black text-[#ef4444] drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">₹</span><input type="number" id="amount" placeholder="0.00" step="0.01" required class="w-full bg-transparent py-4 pl-2 pr-4 text-3xl font-black text-white focus:outline-none" /></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="relative min-w-0"><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Category</label><select id="category" class="w-full glass-input rounded p-3 pr-8 text-xs text-white font-bold appearance-none truncate"></select><i data-lucide="chevron-down" class="absolute right-3 top-8 w-3 h-3 text-gray-500 pointer-events-none"></i></div>
+                    <div class="relative min-w-0"><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Account Vector</label><select id="account" class="w-full glass-input rounded p-3 pr-8 text-xs text-white font-bold appearance-none truncate"><option value="UPI">UPI PROTOCOL</option><option value="Debit Card">DEBIT VECTOR</option><option value="Credit Card">CREDIT LINE</option><option value="Cash">PHYSICAL RESERVE</option><option value="Emergency">ISOLATED FUND</option></select><i data-lucide="chevron-down" class="absolute right-3 top-8 w-3 h-3 text-gray-500 pointer-events-none"></i></div>
+                </div>
+                <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Timestamp</label><input type="date" id="date" required class="w-full glass-input rounded p-3 text-xs text-[#00e5ff] font-bold uppercase tracking-wider cursor-text" /></div>
+                <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Parameters (Notes)</label><input type="text" id="note" placeholder="Optional context..." class="w-full glass-input rounded p-3 text-xs text-white font-medium truncate" /></div>
+                
+                <div class="flex items-center justify-between mb-4 p-3 bg-black/40 rounded border border-white/5 cursor-pointer hover:border-[#00e5ff]/30 hover:bg-[#00e5ff]/5 transition-colors mt-2" onclick="document.getElementById('isRecurring').click()">
+                    <div>
+                        <p class="text-[10px] font-bold text-[#00e5ff] uppercase tracking-widest">Auto-Recurring Matrix</p>
+                        <p class="text-[8px] text-gray-500 uppercase tracking-wide mt-0.5">Flag as structural liability</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer pointer-events-none">
+                      <input type="checkbox" id="isRecurring" class="sr-only peer">
+                      <div class="w-9 h-5 bg-black border border-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-[#00e5ff] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/50 after:border-gray-500 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#00e5ff]/20 peer-checked:after:bg-[#00e5ff] shadow-inner"></div>
+                    </label>
+                </div>
+
+                <button id="submitBtn" type="submit" class="w-full bg-gradient-to-r from-[#ef4444] to-[#b91c1c] text-white font-black py-4 rounded transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)] border border-[#ef4444]/50 hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] uppercase tracking-widest text-sm">Execute Transfer</button>
+              </form>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVESTMENTS VIEW -->
+    <div id="viewInvestments" class="view-card space-y-4 md:space-y-6">
+      <div class="glass-panel p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t-2 border-t-[#fbbf24] shrink-0">
+        <div><h2 class="text-3xl font-black text-white uppercase tracking-widest bubbly-text flex items-center"><i data-lucide="pie-chart" class="text-[#fbbf24] inline mr-2 w-8 h-8"></i> Investments & Projections <span class="info-icon ml-2" data-info="Capital growth and debt clearing simulators."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h2></div>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+          
+          <!-- SIP Calc -->
+          <div class="glass-panel p-6 flex flex-col h-full relative border border-[#10b981]/20">
+              <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-6 border-b border-white/10 pb-4 flex items-center"><i data-lucide="line-chart" class="w-5 h-5 mr-2 text-[#10b981]"></i> SIP Growth Engine <span class="info-icon" data-info="Model your future wealth trajectory based on compound interest."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h4>
+              <div class="space-y-5 flex-grow">
+                  <div>
+                      <label class="block text-[10px] text-[#10b981] font-bold uppercase tracking-widest mb-2">Monthly Injection (₹)</label>
+                      <input type="number" id="sipAmount" value="5000" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                      <div>
+                          <label class="block text-[10px] text-[#10b981] font-bold uppercase tracking-widest mb-2">Return (%)</label>
+                          <input type="number" id="sipRate" value="12" step="0.1" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                      </div>
+                      <div>
+                          <label class="block text-[10px] text-[#10b981] font-bold uppercase tracking-widest mb-2">Horizon (Yrs)</label>
+                          <input type="number" id="sipYears" value="10" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                      </div>
+                  </div>
+                  <button onclick="calculateSIP()" class="w-full bg-[#10b981]/20 hover:bg-[#10b981] hover:text-black border border-[#10b981]/40 text-[#10b981] py-3 rounded-xl text-xs uppercase font-black tracking-widest transition-all mt-4 shadow-[0_0_15px_rgba(16,185,129,0.2)]">Run Projection</button>
+                  
+                  <div class="mt-6 p-5 bg-black/60 border border-white/5 rounded-2xl shadow-inner text-center">
+                      <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Future Wealth</p>
+                      <p id="sipResult" class="text-3xl font-black text-[#10b981] bubbly-text drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]">₹0</p>
+                      <p id="sipTotalInvested" class="text-[10px] text-[#00e5ff] mt-3 font-bold uppercase tracking-widest">Invested: ₹0</p>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Debt Payoff Calc -->
+          <div class="glass-panel p-6 flex flex-col h-full relative border border-[#ef4444]/20">
+              <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-6 border-b border-white/10 pb-4 flex items-center"><i data-lucide="shield-alert" class="w-5 h-5 mr-2 text-[#ef4444]"></i> Debt Clearing Protocol <span class="info-icon" data-info="Calculate exactly how many months it will take to clear a debt balance."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h4>
+              <div class="space-y-5 flex-grow">
+                  <div>
+                      <label class="block text-[10px] text-[#ef4444] font-bold uppercase tracking-widest mb-2">Total Debt Principal (₹)</label>
+                      <input type="number" id="debtPrincipal" value="200000" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                      <div>
+                          <label class="block text-[10px] text-[#ef4444] font-bold uppercase tracking-widest mb-2">Interest (%)</label>
+                          <input type="number" id="debtRate" value="14" step="0.1" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                      </div>
+                      <div>
+                          <label class="block text-[10px] text-[#ef4444] font-bold uppercase tracking-widest mb-2">Monthly Pay (₹)</label>
+                          <input type="number" id="debtMonthly" value="8000" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                      </div>
+                  </div>
+                  <button onclick="calculateDebt()" class="w-full bg-[#ef4444]/20 hover:bg-[#ef4444] hover:text-black border border-[#ef4444]/40 text-[#ef4444] py-3 rounded-xl text-xs uppercase font-black tracking-widest transition-all mt-4 shadow-[0_0_15px_rgba(239,68,68,0.2)]">Calculate Payoff</button>
+                  
+                  <div class="mt-6 p-5 bg-black/60 border border-white/5 rounded-2xl shadow-inner text-center">
+                      <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Time to Debt-Free</p>
+                      <p id="debtResult" class="text-2xl font-black text-[#ef4444] bubbly-text drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]">0 Months</p>
+                      <p id="debtTotalInterest" class="text-[10px] text-gray-400 mt-3 font-bold uppercase tracking-widest">Total Interest: ₹0</p>
+                  </div>
+              </div>
+          </div>
+
+          <!-- F.I.R.E Engine -->
+          <div class="glass-panel p-6 flex flex-col h-full relative border border-[#0ea5e9]/20">
+              <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-6 border-b border-white/10 pb-4 flex items-center"><i data-lucide="flame" class="w-5 h-5 mr-2 text-[#0ea5e9]"></i> F.I.R.E. Target Engine <span class="info-icon" data-info="Determine your exact financial independence number."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h4>
+              <div class="space-y-5 flex-grow">
+                  <div>
+                      <label class="block text-[10px] text-[#0ea5e9] font-bold uppercase tracking-widest mb-2">Monthly Expenses (₹)</label>
+                      <input type="number" id="fireExpenses" value="40000" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                      <div>
+                          <label class="block text-[10px] text-[#0ea5e9] font-bold uppercase tracking-widest mb-2">Safe Withdrawal (%)</label>
+                          <input type="number" id="fireSWR" value="4" step="0.1" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                      </div>
+                      <div>
+                          <label class="block text-[10px] text-[#0ea5e9] font-bold uppercase tracking-widest mb-2">Inflation Buffer (%)</label>
+                          <input type="number" id="fireInf" value="6" step="0.1" class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-lg">
+                      </div>
+                  </div>
+                  <button onclick="calculateFIRE()" class="w-full bg-[#0ea5e9]/20 hover:bg-[#0ea5e9] hover:text-black border border-[#0ea5e9]/40 text-[#0ea5e9] py-3 rounded-xl text-xs uppercase font-black tracking-widest transition-all mt-4 shadow-[0_0_15px_rgba(14,165,233,0.2)]">Calculate Target</button>
+                  
+                  <div class="mt-6 p-5 bg-black/60 border border-white/5 rounded-2xl shadow-inner text-center">
+                      <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Target Corpus Required</p>
+                      <p id="fireResult" class="text-3xl font-black text-[#0ea5e9] bubbly-text drop-shadow-[0_0_10px_rgba(14,165,233,0.4)]">₹0</p>
+                      <p id="fireYearly" class="text-[10px] text-white mt-3 font-bold uppercase tracking-widest">Yearly Withdrawal: ₹0</p>
+                  </div>
+              </div>
+          </div>
+          
+          <!-- MARKET INTELLIGENCE ENGINE -->
+          <div class="glass-panel p-6 flex flex-col h-full relative border border-[#00e5ff]/20 lg:col-span-3">
+              <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-6 border-b border-white/10 pb-4 flex items-center"><i data-lucide="bar-chart" class="w-5 h-5 mr-2 text-[#00e5ff]"></i> Market Intelligence & Forecasting <span class="info-icon" data-info="AI-driven asset forecasting and stock analysis terminal."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h4>
+              <div class="flex flex-col md:flex-row gap-4 h-full">
+                  <div class="w-full md:w-1/3 space-y-4">
+                      <div>
+                          <label class="block text-[10px] text-[#00e5ff] font-bold uppercase tracking-widest mb-2">Asset Ticker / Symbol</label>
+                          <input type="text" id="stockTicker" placeholder="e.g. RELIANCE, AAPL, BTC..." class="w-full glass-input rounded-xl px-4 py-3 text-white font-bold text-sm uppercase">
+                      </div>
+                      <button onclick="forecastAsset()" class="w-full bg-[#00e5ff]/20 hover:bg-[#00e5ff] hover:text-black border border-[#00e5ff]/40 text-[#00e5ff] py-3 rounded-xl text-xs uppercase font-black tracking-widest transition-all shadow-[0_0_15px_rgba(0,229,255,0.2)]">Run Deep Scan</button>
+                      <div class="mt-4 border-t border-white/10 pt-4">
+                          <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Suggested Assets</p>
+                          <div class="flex flex-wrap gap-2">
+                              <button onclick="document.getElementById('stockTicker').value='NIFTY50'; forecastAsset()" class="text-[9px] bg-white/5 border border-white/10 rounded px-2 py-1 text-gray-300 hover:text-white transition">NIFTY 50</button>
+                              <button onclick="document.getElementById('stockTicker').value='GOLD'; forecastAsset()" class="text-[9px] bg-white/5 border border-white/10 rounded px-2 py-1 text-gray-300 hover:text-white transition">GOLD (XAU)</button>
+                              <button onclick="document.getElementById('stockTicker').value='S&P500'; forecastAsset()" class="text-[9px] bg-white/5 border border-white/10 rounded px-2 py-1 text-gray-300 hover:text-white transition">S&P 500</button>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="w-full md:w-2/3 bg-black/60 border border-white/5 rounded-xl p-4 flex flex-col min-h-[200px]">
+                      <div id="stockTerminal" class="flex-grow overflow-y-auto text-xs text-[#00e5ff] font-medium leading-relaxed ledger-scrollbar pr-2">
+                          <div class="flex flex-col items-center justify-center h-full opacity-60">
+                              <i data-lucide="activity" class="w-8 h-8 mb-2 text-[#00e5ff] animate-pulse"></i>
+                              <p class="text-center font-bold uppercase tracking-widest">Market Feed Standby...</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          
+      </div>
+    </div>
+
+    <!-- WISHLIST VIEW -->
+    <div id="viewWishlist" class="view-card space-y-4 md:space-y-6">
+      <div class="glass-panel rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t-2 border-t-[#00e5ff]">
+        <div><h2 class="text-3xl font-black text-white uppercase tracking-widest bubbly-text flex items-center"><i data-lucide="target" class="text-[#00e5ff] inline mr-2 w-8 h-8"></i> Target Goals <span class="info-icon ml-2" data-info="Track and manage your purchasing goals."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h2></div>
+        <div class="flex items-center space-x-3 bg-black/60 p-2 rounded-2xl border border-[#00e5ff]/30 shadow-[inset_0_0_10px_rgba(0,229,255,0.1)]"><div class="px-3 py-2 text-[10px] font-bold text-[#00e5ff] uppercase tracking-widest border-r border-[#00e5ff]/20">Savings Plan</div><div class="relative w-32"><span class="absolute left-2 top-1/2 -translate-y-1/2 text-[#10b981] font-black text-sm">₹</span><input type="number" id="wishlistSavingsInput" placeholder="0" class="w-full bg-transparent py-1 pl-6 pr-2 text-base font-black text-white outline-none" onchange="updateWishlistSavings(this.value)" /></div><span class="text-gray-500 text-[9px] font-bold pr-3 uppercase tracking-widest">/ Mo</span></div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <div class="lg:col-span-1">
+          <div class="glass-panel rounded-3xl p-5 md:p-6 sticky top-6">
+            <h3 class="text-xs font-bold text-[#00e5ff] mb-5 uppercase tracking-widest flex items-center">Auto-Fetch Item <span class="info-icon" data-info="Paste an amazon or flipkart URL to automatically extract product data."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h3>
+            <form id="wishlistForm" class="space-y-4">
+              <div class="relative"><input type="url" id="wishLink" placeholder="Global URL Link..." class="w-full glass-input rounded-xl p-3.5 pr-10 text-xs text-white" /><i id="linkStatusIcon" data-lucide="link" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i><button type="button" id="cancelWishScrapeBtn" onclick="cancelWishScrape()" class="hidden absolute right-10 top-1/2 -translate-y-1/2 text-[#ef4444]"><i data-lucide="x-circle" class="w-4 h-4"></i></button></div>
+              <input type="text" id="wishName" placeholder="Product Name Target" required class="w-full glass-input rounded-xl p-3.5 text-xs text-white font-medium hover:border-[#00e5ff]/50 transition-colors tracking-wider truncate" />
+              <input type="number" id="wishPrice" placeholder="Price Matrix (₹)" required class="w-full glass-input rounded-xl p-3.5 text-xs font-bold text-white hover:border-[#00e5ff]/50 transition-colors" />
+              <div class="relative min-w-0"><label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 pl-1">Wish Category</label><select id="wishCategory" class="w-full glass-input rounded-xl p-3.5 pr-10 text-xs text-[#00e5ff] font-bold uppercase tracking-wider appearance-none truncate"><option value="Gadgets">💻 GADGETS</option><option value="Apparel">👕 APPAREL</option><option value="Lifestyle">✨ LIFESTYLE</option><option value="Books">📚 BOOKS</option><option value="Electronics">🔌 ELECTRONICS</option><option value="Gaming">🎮 GAMING</option><option value="Furniture">🛋️ FURNITURE</option><option value="Travel">✈️ TRAVEL</option><option value="Vehicles">🚗 VEHICLES</option><option value="Health">⚕️ HEALTH</option><option value="Other">📦 OTHER</option></select><i data-lucide="chevron-down" class="absolute right-4 top-10 transform w-4 h-4 text-gray-500 pointer-events-none"></i></div>
+              <input type="url" id="wishImage" placeholder="Image Resource Address" class="w-full glass-input rounded-xl p-3.5 text-xs text-white font-medium hover:border-[#00e5ff]/50 transition-colors truncate" />
+              <button type="submit" class="w-full bg-[#0284c7] hover:bg-[#0ea5e9] text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(2,132,199,0.5)] transition-colors">Save Goal</button>
+            </form>
+            <div class="mt-6 border-t border-white/5 pt-4">
+                <h4 class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-3">Quick Ideas</h4>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="fillWish('MacBook Pro', 120000, 'Gadgets')" class="text-[10px] font-bold bg-white/5 border border-white/10 rounded-full px-3 py-1 text-gray-400 hover:text-white hover:bg-white/10 transition-colors">💻 MacBook</button>
+                    <button type="button" onclick="fillWish('AirPods', 20000, 'Electronics')" class="text-[10px] font-bold bg-white/5 border border-white/10 rounded-full px-3 py-1 text-gray-400 hover:text-white hover:bg-white/10 transition-colors">🎧 AirPods</button>
+                    <button type="button" onclick="fillWish('Sneakers', 5000, 'Apparel')" class="text-[10px] font-bold bg-white/5 border border-white/10 rounded-full px-3 py-1 text-gray-400 hover:text-white hover:bg-white/10 transition-colors">👟 Sneakers</button>
+                </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg:col-span-2"><div id="wishlistGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"></div></div>
+      </div>
+    </div>
+
+    <!-- WATCH & READ VIEW -->
+    <div id="viewMedia" class="view-card space-y-4 md:space-y-6">
+      <div class="glass-panel rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t-2 border-t-[#a855f7]">
+        <div><h2 class="text-3xl font-black text-white uppercase tracking-widest bubbly-text flex items-center"><i data-lucide="database" class="text-[#a855f7] inline mr-2 w-8 h-8"></i> Vault <span class="info-icon ml-2" data-info="Your personal media consumption tracker."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h2></div>
+        <button onclick="toggleMediaView()" class="bg-white/5 hover:bg-[#a855f7]/20 hover:text-[#a855f7] text-gray-300 px-4 py-2 rounded-xl text-xs uppercase font-bold tracking-widest flex items-center border border-white/5 hover:border-[#a855f7]/50 transition-colors"><i id="mediaViewIcon" data-lucide="kanban" class="w-4 h-4 mr-2"></i> <span id="mediaViewText">Board</span></button>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <div class="lg:col-span-1">
+          <div class="glass-panel rounded-3xl p-5 md:p-6 sticky top-6">
+            <h3 class="text-xs font-bold text-[#a855f7] mb-5 uppercase tracking-widest flex items-center">Fetch Data Node <span class="info-icon" data-info="Paste an IMDb or Goodreads link to extract poster and title."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h3>
+            <form id="mediaForm" class="space-y-4">
+              <div class="relative"><input type="url" id="mediaLink" placeholder="Global Link Reference..." class="w-full glass-input rounded-xl p-3.5 pr-10 text-xs text-white" /><i id="mediaLinkStatusIcon" data-lucide="link" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i><button type="button" id="cancelMediaScrapeBtn" onclick="cancelMediaScrape()" class="hidden absolute right-10 top-1/2 -translate-y-1/2 text-[#ef4444]"><i data-lucide="x-circle" class="w-4 h-4"></i></button></div>
+              <input type="text" id="mediaName" placeholder="Node Title" required class="w-full glass-input rounded-xl p-3.5 text-xs text-white font-medium hover:border-[#00e5ff]/50 transition-colors tracking-wider truncate" />
+              <div class="grid grid-cols-2 gap-4">
+                  <div class="relative min-w-0"><label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 pl-1">Format Type</label><select id="mediaType" class="w-full glass-input rounded-xl p-3.5 pr-8 text-[10px] font-bold text-[#a855f7] uppercase appearance-none"><option value="Movie">🎬 MOVIE</option><option value="Book">📚 BOOK</option><option value="Series">📺 SERIES</option><option value="Anime">🎌 ANIME</option></select><i data-lucide="chevron-down" class="absolute right-3 top-9 w-3 h-3 text-gray-500 pointer-events-none"></i></div>
+                  <div class="relative min-w-0"><label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 pl-1">Genre Tag</label><select id="mediaGenre" class="w-full glass-input rounded-xl p-3.5 pr-8 text-[10px] font-bold text-[#00e5ff] uppercase appearance-none"><option value="Action">💥 Action</option><option value="Adventure">🗺️ Adventure</option><option value="Comedy">😂 Comedy</option><option value="Crime">🕵️ Crime</option><option value="Drama">🎭 Drama</option><option value="Fantasy">✨ Fantasy</option><option value="Horror">🧟 Horror</option><option value="Mystery">🔍 Mystery</option><option value="Romance">❤️ Romance</option><option value="Sci-Fi">🚀 Sci-Fi</option><option value="Thriller">🔪 Thriller</option><option value="Non-Fiction">📘 Non-Fiction</option><option value="Other">📦 Other</option></select><i data-lucide="chevron-down" class="absolute right-3 top-9 w-3 h-3 text-gray-500 pointer-events-none"></i></div>
+              </div>
+              <div class="relative min-w-0"><label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 pl-1">Progress State</label><select id="mediaStatus" class="w-full glass-input rounded-xl p-3.5 pr-10 text-[10px] font-bold text-white uppercase appearance-none"><option value="Planned">📌 PENDING</option><option value="In Progress">⏳ ACTIVE</option><option value="Completed">✅ ARCHIVED</option></select><i data-lucide="chevron-down" class="absolute right-4 top-9 w-4 h-4 text-gray-500 pointer-events-none"></i></div>
+              <div id="ratingContainer" style="display:none;" class="relative min-w-0"><label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 pl-1">Score</label><select id="mediaRating" class="w-full glass-input rounded-xl p-3.5 text-[10px] text-[#fbbf24] uppercase appearance-none"><option value="Unrated">UNRATED</option><option value="5">⭐⭐⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="3">⭐⭐⭐</option><option value="2">⭐⭐</option><option value="1">⭐</option></select><i data-lucide="chevron-down" class="absolute right-4 top-9 w-4 h-4 text-gray-500 pointer-events-none"></i></div>
+              <input type="text" id="mediaDetails" placeholder="Metadata (e.g. 2h 28m, Action, Sci-Fi)" class="w-full glass-input rounded-xl p-3.5 text-xs text-white" />
+              <input type="number" id="mediaPrice" placeholder="Acquisition Cost (₹) - Optional" class="w-full glass-input rounded-xl p-3.5 text-xs text-[#10b981]" />
+              <input type="url" id="mediaImage" placeholder="Visual Data URL" class="w-full glass-input rounded-xl p-3.5 text-xs text-white" />
+              <button type="submit" class="w-full bg-[#a855f7] hover:bg-[#c084fc] text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-colors">Archive Data</button>
+            </form>
+          </div>
+        </div>
+        <div class="lg:col-span-2">
+            <div id="mediaGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"></div>
+            <div id="mediaBoard" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="kanban-col border-t-2 border-t-[#00e5ff] bg-black/60 rounded-xl p-4 border border-[#00e5ff]/20"><h3 class="text-[10px] font-black text-[#00e5ff] uppercase tracking-widest mb-4">Pending Decode</h3><div id="kb-planned" class="space-y-4"></div></div>
+                <div class="kanban-col border-t-2 border-t-[#fbbf24] bg-black/60 rounded-xl p-4 border border-[#fbbf24]/20"><h3 class="text-[10px] font-black text-[#fbbf24] uppercase tracking-widest mb-4">Active</h3><div id="kb-progress" class="space-y-4"></div></div>
+                <div class="kanban-col border-t-2 border-t-[#10b981] bg-black/60 rounded-xl p-4 border border-[#10b981]/20"><h3 class="text-[10px] font-black text-[#10b981] uppercase tracking-widest mb-4">Archived</h3><div id="kb-completed" class="space-y-4"></div></div>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE VIEW -->
+    <div id="viewWorkspace" class="view-card space-y-4 md:space-y-6 flex flex-col min-h-[80vh]">
+      <div class="glass-panel rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t-2 border-t-[#00e5ff] shrink-0">
+        <div><h2 class="text-3xl font-black text-white uppercase tracking-widest bubbly-text flex items-center"><i data-lucide="cpu" class="text-[#00e5ff] inline mr-2 w-8 h-8"></i> Workspace <span class="info-icon ml-2" data-info="Free-form thought vector processing."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h2><p class="text-gray-400 text-[10px] mt-1 font-bold tracking-widest uppercase">Grid Architecture & Deep Logic Space.</p></div>
+        <div class="flex items-center gap-2">
+            <button onclick="exportWorkspacePDF()" class="bg-[#0284c7]/10 text-[#0284c7] hover:bg-[#0284c7] hover:text-white border border-[#0284c7]/40 px-4 py-2.5 rounded-xl text-xs uppercase font-bold tracking-widest transition-colors"><i data-lucide="file-text" class="w-4 h-4 inline mr-1"></i> Export Log</button>
+            <button onclick="saveWorkspace()" class="bg-[#10b981]/10 text-[#10b981] hover:bg-[#10b981] hover:text-black border border-[#10b981]/40 px-5 py-2.5 rounded-xl text-xs uppercase font-bold tracking-widest transition-colors shadow-[0_0_10px_rgba(16,185,129,0.2)]"><i data-lucide="cloud-upload" class="w-4 h-4 inline mr-1"></i> Sync Cloud</button>
+        </div>
+      </div>
+      
+      <div class="mb-6 border-b border-[#00e5ff]/20 pb-8">
+          <div class="glass-panel rounded-2xl p-4 w-full max-w-2xl mx-auto mb-6 transition-all relative border border-white/10 hover:border-[#00e5ff]/50 z-20 shadow-[0_0_20px_rgba(0,229,255,0.1)]" id="keepInputContainer">
+              <input type="text" id="keepTitle" placeholder="Memory Node Title" class="w-full bg-transparent text-[#00e5ff] font-bold mb-2 outline-none hidden text-lg">
+              <textarea id="keepBody" placeholder="Initialize thought vector..." class="w-full bg-transparent text-gray-300 text-sm outline-none resize-none overflow-hidden" rows="1" onfocus="expandKeepInput()"></textarea>
+              <div id="keepControls" class="hidden flex justify-between items-center mt-3 pt-3 border-t border-[#00e5ff]/20">
+                  <div class="flex gap-2">
+                      <button onclick="setKeepColor('bg-black/60')" class="w-5 h-5 rounded-full border border-white/20 bg-black/60 hover:scale-110 transition-transform"></button>
+                      <button onclick="setKeepColor('bg-[#ef4444]/20 border-[#ef4444]/40')" class="w-5 h-5 rounded-full border border-[#ef4444]/40 bg-[#ef4444]/20 hover:scale-110 transition-transform"></button>
+                      <button onclick="setKeepColor('bg-[#0284c7]/20 border-[#0284c7]/40')" class="w-5 h-5 rounded-full border border-[#0284c7]/40 bg-[#0284c7]/20 hover:scale-110 transition-transform"></button>
+                      <button onclick="setKeepColor('bg-[#10b981]/20 border-[#10b981]/40')" class="w-5 h-5 rounded-full border border-[#10b981]/40 bg-[#10b981]/20 hover:scale-110 transition-transform"></button>
+                      <button onclick="setKeepColor('bg-[#a855f7]/20 border-[#a855f7]/40')" class="w-5 h-5 rounded-full border border-[#a855f7]/40 bg-[#a855f7]/20 hover:scale-110 transition-transform"></button>
+                      <input type="hidden" id="keepSelectedColor" value="bg-black/60">
+                  </div>
+                  <div class="flex items-center gap-3">
+                      <button onclick="closeKeepInput()" class="text-xs font-bold text-gray-500 uppercase tracking-widest hover:text-white transition-colors">Abort</button>
+                      <button onclick="saveKeepNote()" class="text-xs font-bold text-[#00e5ff] uppercase tracking-widest hover:text-white transition-colors">Store</button>
+                  </div>
+              </div>
+          </div>
+          <div id="keepGrid" class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4"></div>
+      </div>
+
+      <div>
+        <h3 class="text-lg font-bold text-white uppercase tracking-widest mb-4 flex items-center"><i data-lucide="code" class="text-[#00e5ff] w-5 h-5 mr-2"></i> Logic Engine Sandbox <span class="info-icon" data-info="Draft rich text documents or switch tools to draw directly on the digital whiteboard canvas."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h3>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 flex-grow">
+            
+            <div class="glass-panel rounded-3xl p-6 flex flex-col h-full min-h-[500px]">
+                <div class="flex flex-wrap gap-2 mb-4 items-center border-b border-[#00e5ff]/20 pb-4 shrink-0 w-full">
+                    <div class="flex items-center bg-black/60 border border-[#00e5ff]/30 rounded-xl p-1 gap-1">
+                        <button type="button" id="btn-bold" onclick="document.execCommand('bold', false, null)" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">B</button>
+                        <button type="button" id="btn-italic" onclick="document.execCommand('italic', false, null)" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold italic transition-colors">I</button>
+                        <button type="button" id="btn-underline" onclick="document.execCommand('underline', false, null)" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold underline transition-colors">U</button>
+                    </div>
+                    <div class="flex items-center bg-black/60 border border-[#00e5ff]/30 rounded-xl p-1 px-3 gap-3">
+                        <div class="relative flex items-center min-w-[100px]">
+                            <select onchange="document.execCommand('fontName', false, this.value)" class="bg-transparent text-[#00e5ff] text-sm font-bold outline-none cursor-pointer pr-5 appearance-none w-full">
+                                <option value="Fredoka">Fredoka</option><option value="Arial">Arial</option><option value="Courier New">Courier</option><option value="Georgia">Georgia</option><option value="Times New Roman">Times Roman</option><option value="Verdana">Verdana</option>
+                            </select>
+                            <i data-lucide="chevron-down" class="w-3 h-3 absolute right-0 text-gray-500 pointer-events-none"></i>
+                        </div>
+                        <div class="w-px h-5 bg-[#00e5ff]/30 mx-1"></div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="adjustFontSize(-1)" class="text-gray-400 hover:text-white"><i data-lucide="minus" class="w-3 h-3"></i></button>
+                            <input type="number" id="wsFontSizeInput" value="16" min="8" max="72" onchange="applyFontSize(this.value)" class="bg-transparent text-[#00e5ff] font-bold w-6 text-center outline-none text-sm">
+                            <button type="button" onclick="adjustFontSize(1)" class="text-gray-400 hover:text-white"><i data-lucide="plus" class="w-3 h-3"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto mt-2 xl:mt-0">
+                        <div class="flex items-center bg-black/60 border border-[#00e5ff]/30 rounded-xl p-1 gap-1">
+                            <button type="button" onclick="document.execCommand('formatBlock', false, 'H1')" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">H1</button>
+                            <button type="button" onclick="document.execCommand('formatBlock', false, 'H2')" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">H2</button>
+                            <button type="button" onclick="document.execCommand('insertUnorderedList')" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg flex items-center transition-colors"><i data-lucide="list" class="w-4 h-4"></i></button>
+                        </div>
+                        <button type="button" onclick="insertChecklist()" class="bg-[#10b981]/10 border border-[#10b981]/40 text-[#10b981] px-4 py-2 rounded-xl text-xs font-bold flex items-center hover:bg-[#10b981] hover:text-black transition-colors shadow-[0_0_10px_rgba(16,185,129,0.2)]"><i data-lucide="check-square" class="w-4 h-4 mr-1.5"></i> Task</button>
+                        <div class="flex items-center bg-black/60 border border-[#00e5ff]/30 rounded-xl p-1 px-3 gap-2">
+                            <button type="button" onclick="document.execCommand('hiliteColor', false, '#fcd34d')" class="text-[#fbbf24] hover:text-white transition-colors" title="Highlight"><i data-lucide="highlighter" class="w-4 h-4"></i></button>
+                            <div class="w-px h-4 bg-[#00e5ff]/30 mx-1"></div>
+                            <span class="text-[10px] text-[#00e5ff] font-bold uppercase tracking-widest">Tint</span>
+                            <input type="color" onchange="applyFontColor(this.value)" class="w-4 h-4 rounded cursor-pointer border-0 p-0 bg-transparent">
+                        </div>
+                        
+                        <div class="ml-auto flex gap-2">
+                            <button type="button" onclick="saveTextDraft()" class="bg-[#0284c7] hover:bg-[#0ea5e9] text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(2,132,199,0.5)]"><i data-lucide="save" class="w-3 h-3 inline mr-1"></i> Save Draft</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="workspaceNotes" contenteditable="true" class="editor-content flex-grow outline-none overflow-y-auto text-[#00e5ff] text-sm leading-relaxed ledger-scrollbar shadow-[inset_0_0_20px_rgba(0,229,255,0.05)]"></div>
+                
+                <div class="mt-4 border-t border-[#00e5ff]/20 pt-4">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Saved Document Protocols</h3>
+                    <div id="textDraftsGrid" class="flex gap-3 overflow-x-auto pb-2 hide-scroll snap-x w-full"></div>
+                </div>
+            </div>
+
+            <div id="whiteboardContainer" class="glass-panel rounded-3xl p-6 flex flex-col h-full min-h-[500px] transition-all">
+                <div class="flex flex-wrap items-center gap-2 mb-4 border-b border-[#00e5ff]/20 pb-4 shrink-0 w-full">
+                    <div class="flex flex-wrap items-center bg-black/60 border border-[#00e5ff]/30 rounded-xl p-1 gap-1">
+                        <button type="button" onclick="setTool('pen')" id="tool-pen" class="wb-tool tool-active bg-[#00e5ff] text-black px-3 py-1.5 rounded-lg flex items-center transition-colors"><i data-lucide="pen-tool" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="setTool('highlighter')" id="tool-highlighter" class="wb-tool text-[#fbbf24] hover:bg-white/10 px-3 py-1.5 rounded-lg flex items-center transition-colors"><i data-lucide="highlighter" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="setTool('eraser')" id="tool-eraser" class="wb-tool text-gray-400 hover:bg-white/10 px-3 py-1.5 rounded-lg flex items-center transition-colors"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+                        <div class="w-px h-4 bg-[#00e5ff]/30 mx-1 hidden sm:block"></div>
+                        <button type="button" onclick="setTool('line')" id="tool-line" class="wb-tool text-gray-400 hover:bg-white/10 px-2 py-1.5 rounded-lg flex items-center transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="setTool('rect')" id="tool-rect" class="wb-tool text-gray-400 hover:bg-white/10 px-2 py-1.5 rounded-lg flex items-center transition-colors"><i data-lucide="square" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="setTool('circle')" id="tool-circle" class="wb-tool text-gray-400 hover:bg-white/10 px-2 py-1.5 rounded-lg flex items-center transition-colors"><i data-lucide="circle" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="setTool('arrow')" id="tool-arrow" class="wb-tool text-gray-400 hover:bg-white/10 px-2 py-1.5 rounded-lg flex items-center transition-colors"><i data-lucide="arrow-up-right" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="flex items-center bg-black/60 border border-[#00e5ff]/30 rounded-xl p-1.5 px-3 gap-3 w-full sm:w-auto">
+                        <button type="button" onclick="setTextMode()" id="tool-text" class="wb-tool text-gray-400 hover:text-white flex items-center text-[10px] font-bold transition-colors uppercase tracking-widest"><i data-lucide="type" class="w-3 h-3 mr-1"></i> Text</button>
+                        <div class="w-px h-4 bg-[#00e5ff]/30 mx-1"></div>
+                        <input type="color" id="wbColorPicker" value="#00e5ff" onchange="setPenColor(this.value)" class="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0">
+                        <div class="flex items-center gap-2 border-l border-[#00e5ff]/30 pl-3">
+                            <i data-lucide="menu" class="w-4 h-4 text-[#00e5ff]"></i>
+                            <input type="range" id="wbWidthSlider" min="1" max="50" value="2" onchange="setPenWidth(this.value)" class="w-16 accent-[#00e5ff] cursor-pointer">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 ml-auto w-full sm:w-auto justify-end mt-2 sm:mt-0">
+                        <button type="button" onclick="undoWhiteboard()" class="bg-gray-800 text-gray-300 border border-[#00e5ff]/30 px-3 py-2 rounded-xl text-xs font-bold flex items-center hover:bg-white/10 transition-colors"><i data-lucide="undo" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="clearWhiteboard()" class="bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/40 px-3 py-2 rounded-xl text-xs font-bold flex items-center hover:bg-[#ef4444] hover:text-black transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="toggleWhiteboardFullscreen()" class="bg-[#00e5ff]/10 text-[#00e5ff] border border-[#00e5ff]/40 px-3 py-2 rounded-xl text-xs font-bold flex items-center hover:bg-[#00e5ff] hover:text-black transition-colors ml-2 shadow-[0_0_10px_rgba(0,229,255,0.2)]"><i data-lucide="maximize" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+                <div class="flex-grow relative bg-[rgba(0,229,255,0.02)] rounded-xl border border-[#00e5ff]/20 overflow-hidden shadow-[inset_0_0_30px_rgba(0,229,255,0.05)]">
+                    <canvas id="whiteboardCanvas" class="absolute inset-0 w-full h-full cursor-crosshair touch-none"></canvas>
+                </div>
+                
+                <div class="mt-4 border-t border-[#00e5ff]/20 pt-4">
+                  <div class="flex justify-between items-center mb-3">
+                      <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">Saved Schematic Drafts</h3>
+                      <div class="flex gap-2">
+                          <button onclick="saveWbDraft()" class="bg-[#00e5ff] hover:bg-[#0ea5e9] text-black px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(0,229,255,0.6)]"><i data-lucide="save" class="w-3 h-3 inline mr-1"></i> Save Draft</button>
+                          <button onclick="deleteLastSync()" class="text-[9px] font-bold text-[#ef4444] border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 rounded-lg uppercase tracking-widest hover:bg-[#ef4444] hover:text-black transition-colors"><i data-lucide="trash" class="w-3 h-3 inline mr-1"></i> Del Last</button>
+                      </div>
+                  </div>
+                  <div id="recentSavesGrid" class="flex gap-3 overflow-x-auto pb-2 hide-scroll w-full snap-x"></div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW: GROWTH (SELF-IMPROVEMENT) VIEW -->
+    <div id="viewGrowth" class="view-card space-y-4 md:space-y-6">
+      <div class="glass-panel rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t-2 border-t-[#0ea5e9] shrink-0">
+        <div>
+            <h2 class="text-3xl font-black text-white uppercase tracking-widest bubbly-text flex items-center"><i data-lucide="zap" class="text-[#0ea5e9] inline mr-2 w-8 h-8"></i> Personal Growth <span class="info-icon ml-2" data-info="Daily mental and physical conditioning metrics."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h2>
+            <p class="text-gray-400 text-[10px] mt-1 font-bold tracking-widest uppercase">Identify Weaknesses. Generate Countermeasures.</p>
+        </div>
+        <a href="fitness/index.html" target="_blank" class="bg-[#00e5ff]/10 hover:bg-[#00e5ff] text-[#00e5ff] hover:text-black border border-[#00e5ff]/40 px-5 py-3 rounded-lg text-xs uppercase font-black tracking-widest transition-colors shadow-[0_0_15px_rgba(0,229,255,0.2)] flex items-center group">
+            <i data-lucide="activity" class="w-4 h-4 mr-2 group-hover:animate-pulse"></i> Launch LEVEL//UP Fitness
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          
+          <!-- Weakness Input & Daily Habits -->
+          <div class="lg:col-span-1 space-y-4 md:space-y-6">
+              
+              <!-- Dynamic Habit Matrix -->
+              <div class="glass-panel p-6 flex flex-col border border-white/5">
+                  <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-4 border-b border-white/10 pb-4 flex items-center"><i data-lucide="check-circle" class="w-5 h-5 mr-2 text-[#a855f7]"></i> Dynamic Habit Matrix <span class="info-icon" data-info="Add custom daily habits. Progress is tracked continuously."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h4>
+                  
+                  <div class="flex gap-2 mb-4">
+                      <input type="text" id="newHabitInput" placeholder="New habit..." class="flex-1 glass-input rounded-lg px-3 py-2 text-xs text-white outline-none">
+                      <button onclick="addNewHabit()" class="bg-[#a855f7]/20 text-[#a855f7] hover:bg-[#a855f7] hover:text-black px-3 py-2 rounded-lg text-xs font-bold transition-colors"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                  </div>
+
+                  <div id="dynamicHabitList" class="space-y-3 flex-grow overflow-y-auto max-h-[200px] ledger-scrollbar pr-2">
+                      <!-- Rendered via JS -->
+                  </div>
+
+                  <div class="mt-4 border-t border-white/10 pt-4">
+                      <h5 class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">3-Day History Log</h5>
+                      <div id="habitHistoryLog" class="text-[9px] text-gray-500 space-y-1">
+                          <!-- History Logs Go Here -->
+                      </div>
+                  </div>
+              </div>
+              
+              <!-- Mood & Energy Telemetry -->
+              <div class="glass-panel p-6 flex flex-col border border-white/5">
+                  <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-4 border-b border-white/10 pb-4 flex items-center"><i data-lucide="brain" class="w-5 h-5 mr-2 text-[#10b981]"></i> Cognitive State <span class="info-icon" data-info="Log your daily energy and focus levels. Data is tied to your habit tracker."><i data-lucide="help-circle" class="w-4 h-4"></i></span></h4>
+                  <div class="space-y-4">
+                      <div>
+                          <div class="flex justify-between items-center mb-2">
+                              <label class="text-[10px] text-[#10b981] font-bold uppercase tracking-widest">Energy Level</label>
+                              <span id="energyValue" class="text-xs text-white font-black">5/10</span>
+                          </div>
+                          <input type="range" id="energySlider" min="1" max="10" value="5" class="mood-slider" oninput="document.getElementById('energyValue').innerText = this.value + '/10'; saveMood()">
+                      </div>
+                      <div>
+                          <div class="flex justify-between items-center mb-2">
+                              <label class="text-[10px] text-[#10b981] font-bold uppercase tracking-widest">Mental Focus</label>
+                              <span id="focusValue" class="text-xs text-white font-black">5/10</span>
+                          </div>
+                          <input type="range" id="focusSlider" min="1" max="10" value="5" class="mood-slider" oninput="document.getElementById('focusValue').innerText = this.value + '/10'; saveMood()">
+                      </div>
+                  </div>
+              </div>
+
+              <div class="glass-panel p-6 flex flex-col border border-white/5">
+                  <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-6 border-b border-white/10 pb-4 flex items-center"><i data-lucide="crosshair" class="w-5 h-5 mr-2 text-[#ef4444]"></i> Target Weakness</h4>
+                  <form id="growthForm" onsubmit="event.preventDefault();" class="space-y-4">
+                      <div>
+                          <label class="block text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Area of Improvement / Difficulty</label>
+                          <textarea id="growthDesc" placeholder="e.g. Inferiority complex, suck at riding a bike, want to learn guitar..." class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm min-h-[120px] resize-none" required></textarea>
+                      </div>
+                      <button onclick="addGrowthItem()" class="w-full bg-[#ef4444]/20 hover:bg-[#ef4444] hover:text-black border border-[#ef4444]/40 text-[#ef4444] py-3 rounded-xl text-xs uppercase font-black tracking-widest transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)]">Lock Target</button>
+                  </form>
+              </div>
+
+              <div class="glass-panel p-6 flex flex-col border border-white/5">
+                  <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-4 border-b border-white/10 pb-4 flex items-center"><i data-lucide="calendar" class="w-5 h-5 mr-2 text-[#fbbf24]"></i> Active Schedule</h4>
+                  <textarea id="growthTimetable" placeholder="07:00 AM - Wake up & Stretch&#10;18:00 PM - Guitar Practice&#10;19:00 PM - LEVEL//UP Fitness" class="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-gray-300 text-xs font-medium min-h-[150px] resize-none ledger-scrollbar focus:border-[#fbbf24]/50 outline-none transition-colors" onchange="saveTimetable(this.value)"></textarea>
+                  <p class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mt-3 text-right">Auto-Saves to Memory</p>
+              </div>
+          </div>
+
+          <!-- Active Goals & AI Terminal -->
+          <div class="lg:col-span-2 space-y-4 md:space-y-6">
+              
+              <div class="glass-panel p-6 flex flex-col border border-white/5 min-h-[250px]">
+                  <h4 class="text-sm font-bold text-gray-300 uppercase tracking-widest mb-4 border-b border-white/10 pb-4 flex items-center"><i data-lucide="shield" class="w-5 h-5 mr-2 text-[#10b981]"></i> Active Development Protocols</h4>
+                  <div id="growthList" class="space-y-3 overflow-y-auto max-h-[300px] ledger-scrollbar pr-2">
+                      <!-- Rendered via JS -->
+                  </div>
+              </div>
+
+              <div class="glass-panel p-6 flex flex-col border border-[#00e5ff]/30 shadow-[0_0_30px_rgba(0,229,255,0.1)] min-h-[400px]">
+                  <h4 class="text-sm font-bold text-[#00e5ff] uppercase tracking-widest mb-4 border-b border-[#00e5ff]/20 pb-4 flex items-center drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"><i data-lucide="brain-circuit" class="w-5 h-5 mr-2"></i> AI Countermeasure Terminal</h4>
+                  <div id="growthTerminal" class="w-full flex-grow overflow-y-auto p-5 bg-black/60 border border-[#00e5ff]/20 rounded-xl text-sm text-[#00e5ff] leading-relaxed ledger-scrollbar shadow-[inset_0_0_20px_rgba(0,229,255,0.05)]">
+                      <div class="flex flex-col items-center justify-center h-full opacity-60">
+                          <i data-lucide="cpu" class="w-12 h-12 mb-3 text-[#00e5ff] animate-pulse"></i>
+                          <p class="text-center font-bold text-xs uppercase tracking-widest text-[#00e5ff]">Awaiting Target Selection...</p>
+                      </div>
+                  </div>
+              </div>
+
+          </div>
+      </div>
+    </div>
+    
+    </main>
+  </div>
+
+  <!-- PHASE 3: OMNIPRESENT C.A.S.P.E.R. CHAT WIDGET -->
+  <div class="fixed bottom-6 right-6 z-[99999] flex flex-col items-end pointer-events-none">
+      <div id="casperChatWindow" class="hidden w-[350px] h-[450px] mb-4 glass-panel flex-col overflow-hidden transition-all origin-bottom-right pointer-events-auto border-2 border-[#00e5ff]">
+          <div class="bg-gradient-to-r from-black/80 to-[#00e5ff]/10 p-4 border-b border-[#00e5ff]/30 flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                  <div class="relative"><i data-lucide="cpu" class="w-5 h-5 text-[#00e5ff]"></i><span class="absolute top-0 right-0 w-2 h-2 bg-[#fbbf24] rounded-full animate-pulse shadow-[0_0_5px_rgba(251,191,36,0.8)]"></span></div>
+                  <h3 class="text-xs font-black text-white uppercase tracking-widest drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]">C.A.S.P.E.R.</h3>
+              </div>
+              <button onclick="toggleCasper()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+          </div>
+          <div id="casperChatBody" class="flex-grow p-4 overflow-y-auto space-y-4 text-xs font-medium text-[#00e5ff] hide-scroll bg-[rgba(0,229,255,0.02)]">
+              <div class="bg-black/60 border border-[#00e5ff]/30 p-3 rounded-xl rounded-tl-none w-10/12 text-[#00e5ff] shadow-[inset_0_0_10px_rgba(0,229,255,0.1)]">Ready for queries. Type "explain" to learn how to interface with the mainframe, Vidhun.</div>
+          </div>
+          <div class="p-3 border-t border-[#00e5ff]/30 bg-[#0a0a0c]">
+              <div class="relative flex items-center">
+                  <input type="text" id="casperInput" placeholder="Command Override..." class="w-full bg-black/60 border border-[#00e5ff]/40 rounded-xl p-2.5 pl-3 pr-10 text-xs text-white focus:border-[#00e5ff] focus:shadow-[0_0_10px_rgba(0,229,255,0.3)] outline-none transition-colors" onkeypress="if(event.key === 'Enter') sendCasperMessage()">
+                  <button onclick="sendCasperMessage()" class="absolute right-2 text-[#00e5ff] hover:text-white transition-colors"><i data-lucide="send" class="w-4 h-4"></i></button>
+              </div>
+          </div>
+      </div>
+      <button onclick="toggleCasper()" class="w-14 h-14 bg-black rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(0,229,255,0.6)] hover:scale-110 transition-transform border-2 border-[#00e5ff] group pointer-events-auto z-[99999]">
+          <i data-lucide="cpu" class="w-6 h-6 text-[#00e5ff] group-hover:animate-pulse"></i>
+      </button>
+  </div>
+
+  <!-- BULK SMS MODAL -->
+  <div id="bulkSmsModal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+      <div class="glass-panel modal-active rounded-3xl w-full max-w-4xl h-[70vh] border border-[#0284c7]/30 flex flex-col overflow-hidden shadow-[0_0_50px_rgba(2,132,199,0.15)]">
+          <div class="flex justify-between items-center p-6 border-b border-[#0284c7]/20 shrink-0 bg-[#0a0a0c]">
+              <h3 class="text-[#00e5ff] font-black uppercase tracking-widest text-sm flex items-center drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"><i data-lucide="message-square" class="w-5 h-5 mr-2"></i> Bulk SMS Import</h3>
+              <button type="button" onclick="closeBulkSMSModal()" class="text-gray-500 hover:text-white bg-white/10 p-2 rounded-xl"><i data-lucide="x" class="w-4 h-4"></i></button>
+          </div>
+          <div class="flex-grow p-6 flex flex-col relative w-full h-full min-h-[300px] bg-black/40">
+              <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">Paste multiple bank transaction messages separated by line breaks.</p>
+              <textarea id="bulkSmsInput" class="w-full flex-grow bg-black/60 border border-[#00e5ff]/30 rounded-2xl p-4 text-xs text-[#00e5ff] font-medium outline-none focus:border-[#00e5ff] focus:shadow-[inset_0_0_15px_rgba(0,229,255,0.1)] transition-all hide-scroll resize-none" placeholder="E.g.&#10;Sent Rs.150.00 to SWIGGY on 20-04-26&#10;Credited Rs.50000.00 to A/c XXXXX on 21-04-26"></textarea>
+          </div>
+          <div class="p-4 border-t border-[#0284c7]/20 flex justify-end gap-3 shrink-0 bg-[#0a0a0c]">
+              <button onclick="closeBulkSMSModal()" class="px-5 py-2.5 rounded-xl bg-white/5 text-white text-xs font-bold uppercase tracking-wider border border-white/10 hover:bg-white/10">Cancel</button>
+              <button onclick="processBulkSMS()" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(37,99,235,0.4)]"><i data-lucide="cpu" class="w-4 h-4 inline mr-1"></i> Parse Strings</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- CSV / PARSED REVIEW MODAL -->
+  <div id="csvReviewModal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+      <div class="glass-panel modal-active rounded-3xl w-full max-w-5xl h-[85vh] border border-[#10b981]/30 flex flex-col overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.15)]">
+          <div class="flex justify-between items-center p-6 border-b border-[#10b981]/20 shrink-0 bg-[#0a0a0c]">
+              <h3 class="text-[#10b981] font-black uppercase tracking-widest text-sm flex items-center drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"><i data-lucide="file-spreadsheet" class="w-5 h-5 mr-2"></i> Data Matrix Review Stage</h3>
+              <button type="button" onclick="closeCSVModal()" class="text-gray-500 hover:text-white bg-white/10 p-2 rounded-xl"><i data-lucide="x" class="w-4 h-4"></i></button>
+          </div>
+          <div class="flex-grow overflow-y-auto p-4 ledger-scrollbar bg-black/40">
+              <div class="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">Verify extracted parameters below. <span class="text-[#fbbf24]">Orange</span> denotes potential duplicate blocks detected within 48 hours.</div>
+              <div id="csvStagingArea" class="space-y-3"></div>
+          </div>
+          <div class="p-4 border-t border-[#10b981]/20 flex justify-end gap-3 shrink-0 bg-[#0a0a0c]">
+              <button onclick="closeCSVModal()" class="px-5 py-2.5 rounded-xl bg-white/5 text-white text-xs font-bold uppercase tracking-wider border border-white/10 hover:bg-white/10">Cancel</button>
+              <button onclick="commitCSVImport()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider shadow-[0_0_20px_rgba(16,185,129,0.5)]">Inject to Ledger</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- ALL TIME MODAL -->
+  <div id="allTimeModal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4 transition-opacity">
+      <div class="glass-panel modal-active rounded-3xl w-full max-w-5xl h-[70vh] md:h-[80vh] border border-[#10b981]/30 shadow-[0_0_60px_rgba(16,185,129,0.15)] relative overflow-hidden flex flex-col bg-black/60">
+          <div class="absolute inset-0 bg-gradient-to-br from-[#10b981]/5 to-transparent pointer-events-none"></div>
+          <div class="flex justify-between items-center p-6 border-b border-[#10b981]/20 relative z-10 shrink-0">
+             <h3 class="text-white font-black uppercase tracking-widest text-sm flex items-center drop-shadow-sm"><i data-lucide="trending-up" class="w-6 h-6 mr-3 text-[#10b981]"></i> Lifetime Protocol Trajectory</h3>
+             <button type="button" onclick="closeAllTimeChart()" class="text-gray-400 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-2.5 rounded-xl border border-white/10 relative z-50"><i data-lucide="x" class="w-6 h-6"></i></button>
+          </div>
+          <div class="flex-grow p-6 relative z-10 w-full h-full min-h-[300px]">
+              <div class="absolute inset-6"><canvas id="allTimeChartCanvas"></canvas></div>
+          </div>
+      </div>
+  </div>
+
+  <!-- EXPANDED CHART MODAL -->
+  <div id="expandedChartModal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4 transition-opacity">
+      <div class="glass-panel modal-active rounded-3xl w-full max-w-5xl h-[80vh] border border-[#00e5ff]/30 flex flex-col shadow-[0_0_50px_rgba(0,229,255,0.1)]">
+          <div class="flex justify-between items-center p-6 border-b border-[#00e5ff]/20 shrink-0">
+             <h3 id="expandModalTitle" class="text-[#00e5ff] font-black uppercase tracking-widest text-sm flex items-center drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"><i data-lucide="bar-chart-2" class="w-5 h-5 mr-2"></i> Telemetry View</h3>
+             <button type="button" onclick="closeChartModal()" class="text-gray-500 hover:text-white bg-white/10 p-2 rounded-xl relative z-50"><i data-lucide="x" class="w-5 h-5"></i></button>
+          </div>
+          <div class="flex-grow p-4 flex items-center justify-center relative w-full h-full min-h-[300px] bg-black/40">
+              <div class="absolute inset-6"><canvas id="expandedChartCanvas"></canvas></div>
+          </div>
+      </div>
+  </div>
+
+  <!-- TRANSACTION EDIT MODAL -->
+  <div id="editModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+      <div class="glass-panel rounded-3xl p-6 w-full max-w-md border border-white/10">
+          <h3 class="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">Modify Node</h3>
+          <input type="hidden" id="editId">
+          <div class="space-y-4">
+              <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Value</label><input type="number" id="editAmount" step="0.01" class="w-full glass-input rounded-xl p-3 text-sm text-white font-bold"></div>
+              <div class="grid grid-cols-2 gap-4">
+                  <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Category</label><select id="editCategory" class="w-full glass-input rounded-xl p-3 text-xs text-white font-bold"></select></div>
+                  <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Account</label><select id="editAccount" class="w-full glass-input rounded-xl p-3 text-xs text-white font-bold"><option value="UPI">UPI PROTOCOL</option><option value="Debit Card">DEBIT VECTOR</option><option value="Credit Card">CREDIT LINE</option><option value="Cash">PHYSICAL RESERVE</option><option value="Emergency">ISOLATED FUND</option></select></div>
+              </div>
+              <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Timestamp</label><input type="date" id="editDate" class="w-full glass-input rounded-xl p-3 text-xs text-white font-bold"></div>
+              <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Parameters</label><input type="text" id="editNote" class="w-full glass-input rounded-xl p-3 text-xs text-white font-medium"></div>
+              <div class="flex gap-2 pt-2">
+                  <button onclick="closeEditModal()" class="flex-1 bg-white/5 hover:bg-white/10 text-gray-300 py-3 rounded-xl text-xs font-bold uppercase tracking-wider border border-white/10">Cancel</button>
+                  <button onclick="saveEditTx()" class="flex-1 bg-[#00e5ff] hover:bg-[#0ea5e9] text-black py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(0,229,255,0.4)]">Execute</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- WISHLIST EDIT MODAL -->
+  <div id="editWishlistModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+      <div class="glass-panel rounded-3xl p-6 w-full max-w-md border border-[#00e5ff]/30 shadow-[0_0_30px_rgba(0,229,255,0.1)]">
+          <h3 class="text-xs font-bold text-[#00e5ff] mb-4 uppercase tracking-widest">Modify Target Node</h3>
+          <input type="hidden" id="ewId"><input type="hidden" id="ewIsMedia">
+          <div class="space-y-4">
+              <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Title</label><input type="text" id="ewTitle" class="w-full glass-input rounded-xl p-3 text-xs text-white font-bold"></div>
+              <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Value Matrix (₹)</label><input type="number" id="ewPrice" class="w-full glass-input rounded-xl p-3 text-xs text-[#10b981] font-bold"></div>
+              <div class="grid grid-cols-2 gap-4">
+                  <div><label id="ewStoreLabel" class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Origin</label><input type="text" id="ewStore" class="w-full glass-input rounded-xl p-3 text-xs text-white font-bold"></div>
+                  <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Class</label><select id="ewCategory" class="w-full glass-input rounded-xl p-3 text-xs text-[#00e5ff] font-bold appearance-none"></select></div>
+              </div>
+              <div id="ewMediaExtras" class="hidden space-y-4">
+                  <div class="grid grid-cols-2 gap-4">
+                      <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">State</label><select id="ewStatus" class="w-full glass-input rounded-xl p-3 text-xs text-white font-bold"><option value="Planned">PENDING</option><option value="In Progress">ACTIVE</option><option value="Completed">ARCHIVED</option></select></div>
+                      <div id="ewRatingContainer"><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Score</label><select id="ewRating" class="w-full glass-input rounded-xl p-3 text-xs text-[#fbbf24] font-bold"><option value="Unrated">UNRATED</option><option value="5">⭐⭐⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="3">⭐⭐⭐</option><option value="2">⭐⭐</option><option value="1">⭐</option></select></div>
+                  </div>
+              </div>
+              <div><label class="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 pl-1">Visual URL</label><input type="url" id="ewImage" class="w-full glass-input rounded-xl p-3 text-xs text-white font-medium"></div>
+              <div class="flex gap-2 pt-2">
+                  <button onclick="closeEditWishlistModal()" class="flex-1 bg-white/5 hover:bg-white/10 text-gray-300 py-3 rounded-xl text-xs font-bold uppercase tracking-wider border border-white/10">Cancel</button>
+                  <button onclick="saveEditWishlist()" class="flex-1 bg-[#00e5ff] hover:bg-[#0ea5e9] text-black py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(37,99,235,0.4)]">Execute</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- AI REPORT MODAL -->
+  <div id="aiReportModal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-2xl z-[100] flex items-center justify-center p-4">
+      <div class="glass-panel rounded-3xl w-full max-w-5xl h-[85vh] border border-[#00e5ff]/30 flex flex-col overflow-hidden shadow-[0_0_60px_rgba(0,229,255,0.15)]">
+          <div class="flex justify-between items-center p-6 border-b border-[#00e5ff]/20 shrink-0 bg-[#0a0a0c]">
+              <h3 class="text-white font-black uppercase tracking-widest text-sm flex items-center"><i data-lucide="file-text" class="w-5 h-5 mr-2 text-[#00e5ff]"></i> System Intelligence Report</h3>
+              <div class="flex items-center gap-3">
+                  <button onclick="exportReportPDF()" class="bg-white/5 hover:bg-white/10 text-[#ef4444] px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-white/10">PDF Print</button>
+                  <button onclick="exportReportExcel()" class="bg-white/5 hover:bg-white/10 text-[#10b981] px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-white/10">Data Dump</button>
+                  <button onclick="closeAIReport()" class="text-gray-400 hover:text-white bg-white/10 p-2 rounded-xl"><i data-lucide="x" class="w-5 h-5"></i></button>
+              </div>
+          </div>
+          <div class="flex-grow overflow-y-auto p-6 space-y-6 ledger-scrollbar bg-black/40">
+              <div id="aiReportContent" class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-medium bg-[#0a0a0c] p-6 rounded-2xl border border-white/5"></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="bg-black/60 p-4 rounded-2xl border border-white/5 h-64"><canvas id="reportPieMonth"></canvas></div>
+                  <div class="bg-black/60 p-4 rounded-2xl border border-white/5 h-64"><canvas id="reportBarMonth"></canvas></div>
+                  <div class="bg-black/60 p-4 rounded-2xl border border-white/5 h-64"><canvas id="reportPieAll"></canvas></div>
+                  <div class="bg-black/60 p-4 rounded-2xl border border-white/5 h-64"><canvas id="reportBarAll"></canvas></div>
+                  <div class="bg-black/60 p-4 rounded-2xl border border-white/5 h-64"><canvas id="reportRadarMonth"></canvas></div>
+                  <div class="bg-black/60 p-4 rounded-2xl border border-white/5 h-64"><canvas id="reportRadarAll"></canvas></div>
+                  <div class="bg-black/60 p-4 rounded-2xl border border-white/5 h-64"><canvas id="reportTrendMonth"></canvas></div>
+                  <div class="bg-black/60 p-4 rounded-2xl border border-white/5 h-64"><canvas id="reportTrendAll"></canvas></div>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- EDIT KEEP NOTE MODAL -->
+  <div id="editKeepModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4 transition-opacity">
+      <div class="glass-panel modal-active rounded-3xl p-6 w-full max-w-2xl border border-white/20 relative overflow-hidden bg-black/60 flex flex-col">
+          <input type="hidden" id="editKeepId">
+          <input type="text" id="editKeepTitle" class="w-full bg-transparent text-white font-bold text-lg mb-4 outline-none border-b border-white/10 pb-3" placeholder="Title">
+          <textarea id="editKeepBody" class="w-full bg-transparent text-gray-300 text-sm outline-none resize-none min-h-[250px] hide-scroll" placeholder="Note body..."></textarea>
+          <div class="flex justify-between items-center mt-4 pt-4 border-t border-white/10">
+              <div class="flex gap-2">
+                  <button onclick="setEditKeepColor('bg-black/60')" class="w-5 h-5 rounded-full border border-white/20 bg-black/60 hover:scale-110 transition-transform"></button>
+                  <button onclick="setEditKeepColor('bg-[#ef4444]/20 border-[#ef4444]/40')" class="w-5 h-5 rounded-full border border-[#ef4444]/40 bg-[#ef4444]/20 hover:scale-110 transition-transform"></button>
+                  <button onclick="setEditKeepColor('bg-[#0284c7]/20 border-[#0284c7]/40')" class="w-5 h-5 rounded-full border border-[#0284c7]/40 bg-[#0284c7]/20 hover:scale-110 transition-transform"></button>
+                  <button onclick="setEditKeepColor('bg-[#10b981]/20 border-[#10b981]/40')" class="w-5 h-5 rounded-full border border-[#10b981]/40 bg-[#10b981]/20 hover:scale-110 transition-transform"></button>
+                  <button onclick="setEditKeepColor('bg-[#a855f7]/20 border-[#a855f7]/40')" class="w-5 h-5 rounded-full border border-[#a855f7]/40 bg-[#a855f7]/20 hover:scale-110 transition-transform"></button>
+                  <input type="hidden" id="editKeepSelectedColor" value="bg-black/60">
+              </div>
+              <div class="flex gap-3">
+                  <button onclick="closeEditKeepModal()" class="text-xs font-bold text-gray-400 hover:text-white uppercase tracking-widest transition-colors">Cancel</button>
+                  <button onclick="saveEditedKeepNote()" class="text-xs font-bold text-[#00e5ff] hover:text-white uppercase tracking-widest transition-colors">Save</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
