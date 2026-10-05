@@ -1,5 +1,5 @@
 // =============================================================================
-// Wally MK 2 / C.A.S.P.E.R. backend
+// Wally MK 3 / C.A.S.P.E.R. backend
 // - serves the app itself (the folder above this one)
 // - stores the ledger, wishlist/library, workspace and all other app data
 // - receives bank SMS from your phone and holds them until the app collects them
@@ -83,7 +83,7 @@ app.use(express.json({ limit: '8mb' }));
 const wrap = fn => (req, res) => fn(req, res).catch(e => { console.error(e); res.status(500).json({ error: 'server error' }); });
 
 const AI = process.env.ANTHROPIC_API_KEY ? 'anthropic' : process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENAI_API_KEY ? 'openai' : '';
-app.get('/api/health', (req, res) => res.json({ ok: true, store: store.kind, locked: !!KEY, time: Date.now(), up: Math.round(process.uptime()), ai: AI || false, awake: SELF_URL ? awake : false, gate: !!PASS }));
+app.get('/api/health', (req, res) => res.json({ ok: true, store: store.kind, locked: !!KEY, time: Date.now(), up: Math.round(process.uptime()), ai: AI || false, awake: SELF_URL ? awake : false, gate: gateOn() }));
 // ---------------------------------------------------------------------------
 // password gate: nothing but the sign-in page is served until the password is given.
 //   SITE_PASSWORD  the password you type to open the site (falls back to WALLY_KEY when not set)
@@ -92,33 +92,51 @@ app.get('/api/health', (req, res) => res.json({ ok: true, store: store.kind, loc
 // ---------------------------------------------------------------------------
 const crypto = require('crypto');
 const PASS = process.env.SITE_GATE === 'off' ? '' : (process.env.SITE_PASSWORD || KEY);   // SITE_GATE=off keeps the site open and protects only the data routes with WALLY_KEY
-const SECRET = crypto.createHash('sha256').update(PASS + '|' + KEY + '|wally-mk2').digest();
+// a password changed from inside the app is kept (salted and hashed) in the database and takes over from SITE_PASSWORD.
+// Forgot it? Set SITE_PASSWORD_RESET=1 in the host settings: the stored one is ignored and SITE_PASSWORD works again.
+let custom = null, SECRET = Buffer.alloc(32);
+const reseal = () => { SECRET = crypto.createHash('sha256').update((custom ? custom.hash : PASS) + '|' + KEY + '|wally-mk2').digest(); };
+reseal();
+const scrypt = (pw, salt) => crypto.scryptSync(String(pw), salt, 32).toString('hex');
+const gateOn = () => process.env.SITE_GATE !== 'off' && !!(PASS || custom);
+const checkPass = pw => { pw = String(pw || ''); if (custom) return same(scrypt(pw, custom.salt), custom.hash); return !!PASS && same(pw, PASS); };
+const authLoaded = process.env.SITE_PASSWORD_RESET === '1' || process.env.SITE_GATE === 'off' ? Promise.resolve() : Promise.resolve().then(() => store.get('meta', 'auth')).then(v => { if (v && v.salt && v.hash) { custom = v; reseal(); console.log('Sign-in uses the password set from inside the app.'); } }).catch(e => console.error('Stored password could not be read, using SITE_PASSWORD: ' + e.message));
 const same = (a, b) => { const x = crypto.createHash('sha256').update(String(a)).digest(), y = crypto.createHash('sha256').update(String(b)).digest(); return crypto.timingSafeEqual(x, y); };
 const sign = exp => exp + '.' + crypto.createHmac('sha256', SECRET).update(String(exp)).digest('hex');
 const cookieOf = req => { const m = String(req.headers.cookie || '').match(/(?:^|;\s*)wally_s=([^;]+)/); return m ? decodeURIComponent(m[1]) : ''; };
-const signedIn = req => { const t = cookieOf(req), exp = +t.split('.')[0]; return !!PASS && exp > Date.now() && same(t, sign(exp)); };
+const signedIn = req => { const t = cookieOf(req), exp = +t.split('.')[0]; return gateOn() && exp > Date.now() && same(t, sign(exp)); };
 const hasKey = req => !!KEY && same(req.get('x-wally-key') || req.query.key || '', KEY);
 const setCookie = (req, res, val, age) => res.setHeader('Set-Cookie', `wally_s=${encodeURIComponent(val)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${(req.secure || req.get('x-forwarded-proto') === 'https') ? '; Secure' : ''}`);
 app.set('trust proxy', 1);
+app.use((req, res, next) => { authLoaded.then(() => next()); });
 app.use((req, res, next) => { res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('X-Frame-Options', 'DENY'); next(); });
 const tries = new Map();                                          // sign-in attempts per address: 8 wrong tries, then a 15 minute wait
-const LOGIN = msg => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Wally MK 2 • Sign in</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 30%,#0b2a3a 0%,#05080e 60%,#020305 100%);color:#e2e8f0;font:15px/1.5 system-ui,Segoe UI,sans-serif}main{width:min(360px,90vw);text-align:center}.r{width:96px;height:96px;margin:0 auto 18px;border-radius:50%;border:3px solid rgba(0,229,255,.5);box-shadow:0 0 30px rgba(0,229,255,.4),inset 0 0 24px rgba(0,229,255,.3);display:grid;place-items:center}.r i{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,#fff,#9af6ff 45%,rgba(0,229,255,.2) 75%);box-shadow:0 0 26px 6px rgba(0,229,255,.6);animation:b 2.4s ease-in-out infinite}@keyframes b{50%{transform:scale(1.15)}}h1{font-size:19px;letter-spacing:.3em;margin:0;color:#fff}p{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#00e5ff;margin:6px 0 22px}input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid rgba(0,229,255,.4);background:#03080f;color:#fff;font-size:16px;outline:none;text-align:center}input:focus{border-color:#00e5ff;box-shadow:0 0 14px rgba(0,229,255,.3)}button{width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#00e5ff;color:#000;font-weight:800;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}.e{color:#f87171;font-size:13px;min-height:20px;margin-top:12px}</style></head><body><main><div class="r"><i></i></div><h1>WALLY MK 2</h1><p>C.A.S.P.E.R. • identity check</p><form method="post" action="/login"><input type="password" name="password" placeholder="Password" autocomplete="current-password" autofocus required><button>Unlock</button></form><div class="e">${msg || ''}</div></main></body></html>`;
+const LOGIN = msg => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Wally MK 3 • Sign in</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 30%,#0b2a3a 0%,#05080e 60%,#020305 100%);color:#e2e8f0;font:15px/1.5 system-ui,Segoe UI,sans-serif}main{width:min(360px,90vw);text-align:center}.r{width:96px;height:96px;margin:0 auto 18px;border-radius:50%;border:3px solid rgba(0,229,255,.5);box-shadow:0 0 30px rgba(0,229,255,.4),inset 0 0 24px rgba(0,229,255,.3);display:grid;place-items:center}.r i{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,#fff,#9af6ff 45%,rgba(0,229,255,.2) 75%);box-shadow:0 0 26px 6px rgba(0,229,255,.6);animation:b 2.4s ease-in-out infinite}@keyframes b{50%{transform:scale(1.15)}}h1{font-size:19px;letter-spacing:.3em;margin:0;color:#fff}p{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#00e5ff;margin:6px 0 22px}input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid rgba(0,229,255,.4);background:#03080f;color:#fff;font-size:16px;outline:none;text-align:center}input:focus{border-color:#00e5ff;box-shadow:0 0 14px rgba(0,229,255,.3)}button{width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#00e5ff;color:#000;font-weight:800;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}.e{color:#f87171;font-size:13px;min-height:20px;margin-top:12px}</style></head><body><main><div class="r"><i></i></div><h1>WALLY MK 3</h1><p>C.A.S.P.E.R. • identity check</p><form method="post" action="/login"><input type="password" name="password" placeholder="Password" autocomplete="current-password" autofocus required><button>Unlock</button></form><div class="e">${msg || ''}</div></main></body></html>`;
 app.post('/login', express.urlencoded({ extended: false, limit: '2kb' }), (req, res) => {
   const ip = req.ip || 'x', now = Date.now(), t = tries.get(ip) || { n: 0, at: now }; if (now - t.at > 15 * 60000) { t.n = 0; t.at = now; }
   if (t.n >= 8) return res.status(429).type('html').send(LOGIN('Too many wrong tries. Wait 15 minutes, sir.'));
-  if (PASS && same((req.body && req.body.password) || '', PASS)) { tries.delete(ip); setCookie(req, res, sign(now + 30 * 86400000), 30 * 86400); return res.redirect(303, '/'); }
+  if (gateOn() && checkPass(req.body && req.body.password)) { tries.delete(ip); setCookie(req, res, sign(now + 30 * 86400000), 30 * 86400); return res.redirect(303, '/'); }
   t.n++; tries.set(ip, t); setTimeout(() => res.status(401).type('html').send(LOGIN('That password is not right.')), 600);
 });
+// change the sign-in password from inside the app (needs a signed-in session and the current password)
+app.post('/api/password', (req, res, next) => { if (!signedIn(req)) return res.status(401).json({ error: 'Sign in with the password first.' }); next(); }, wrap(async (req, res) => {
+  const cur = String((req.body && req.body.current) || ''), nw = String((req.body && req.body.next) || '');
+  const ip = req.ip || 'x', now = Date.now(), t = tries.get(ip) || { n: 0, at: now }; if (now - t.at > 15 * 60000) { t.n = 0; t.at = now; } if (t.n >= 8) return res.status(429).json({ error: 'Too many wrong tries. Wait 15 minutes.' });
+  if (!checkPass(cur)) { t.n++; tries.set(ip, t); return res.status(403).json({ error: 'The current password is not right.' }); }
+  if (nw.length < 8) return res.status(400).json({ error: 'Use at least 8 characters.' }); if (nw.length > 200) return res.status(400).json({ error: 'That is too long.' }); if (KEY && nw === KEY) return res.status(400).json({ error: 'Do not reuse the machine key as the password.' });
+  const salt = crypto.randomBytes(16).toString('hex'), rec = { salt, hash: scrypt(nw, salt), at: now };
+  await store.set('meta', 'auth', rec); custom = rec; reseal();                       // every other device is signed out; this one gets a fresh session
+  setCookie(req, res, sign(now + 30 * 86400000), 30 * 86400); res.json({ success: true });
+}));
 app.post('/api/logout', (req, res) => { setCookie(req, res, '', 0); res.json({ success: true }); });
 app.use('/api', (req, res, next) => {
-  if (!KEY && !PASS) return next();
+  if (!KEY && !gateOn()) return next();
   if (hasKey(req) || signedIn(req)) return next();
-  if (!KEY && !PASS) return next();
   res.status(401).json({ error: 'key required' });
 });
 // the site itself: only the sign-in page until the password is given
 app.use((req, res, next) => {
-  if (!PASS || req.path.indexOf('/api/') === 0 || signedIn(req) || /^\/(manifest\.json|sw\.js|icon-\d+\.png|favicon\.ico)$/.test(req.path)) return next();
+  if (!gateOn() || req.path.indexOf('/api/') === 0 || signedIn(req) || /^\/(manifest\.json|sw\.js|icon-\d+\.png|favicon\.ico)$/.test(req.path)) return next();
   if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(401).end();
   res.status(401).setHeader('Cache-Control', 'no-store'); res.type('html').send(LOGIN(''));
 });
@@ -219,7 +237,7 @@ const PAGE = (title, body) => `<!doctype html><html><head><meta charset="utf-8">
 const savedPage = (r, media) => PAGE('Saved', `<h1>${r.dup ? 'Already saved' : 'Saved'}</h1><p class="ok">${hEsc(r.item.title)}${!media && r.item.price ? ' • ₹' + r.item.price : ''}</p><p>It is in your ${media ? 'Library' : 'Wishlist'}. This window closes by itself.</p><script>setTimeout(function(){window.close()},${r.dup ? 1400 : 500});</script>`);
 const formPage = (q, media, pre) => {
   const v = k => hEsc(q[k] || pre[k] || ''), img = q.image || pre.image || '';
-  return PAGE('Save to Wally MK 2', `<h1>Save to ${media ? 'Library' : 'Wishlist'}</h1><p>${hEsc(hostOf(q.url || '') || 'No link')} — fill in what the page did not give.</p>${/^https?:/i.test(img) ? `<img src="${hEsc(img)}" alt="">` : ''}
+  return PAGE('Save to Wally MK 3', `<h1>Save to ${media ? 'Library' : 'Wishlist'}</h1><p>${hEsc(hostOf(q.url || '') || 'No link')} — fill in what the page did not give.</p>${/^https?:/i.test(img) ? `<img src="${hEsc(img)}" alt="">` : ''}
 <form method="get" action="${media ? 'bookmark-media-auto' : 'bookmark-auto'}"><input type="hidden" name="url" value="${v('url')}"><input type="hidden" name="key" value="${v('key')}"><input type="hidden" name="details" value="${v('details')}"><input type="hidden" name="by" value="${v('by')}"><input type="hidden" name="genre" value="${v('genre')}"><input type="hidden" name="type" value="${v('type')}">
 <label>${media ? 'Title' : 'Name'}</label><input name="title" required value="${v('title')}">
 ${media ? `<label>Type</label><select name="mtype">${['Movie', 'Series', 'Anime', 'Book'].map(t => `<option ${t === mediaTypeOf(q.url || '', q.type) ? 'selected' : ''}>${t}</option>`).join('')}</select>` : `<label>Price (₹)</label><input name="price" type="number" min="0" step="any" required value="${hEsc(num(q.price) || num(pre.price) || '')}" autofocus><label>Category</label><select name="category">${['Gadgets', 'Fashion', 'Home', 'Books', 'Fitness', 'Lifestyle'].map(t => `<option ${t === 'Lifestyle' ? 'selected' : ''}>${t}</option>`).join('')}</select>`}
@@ -240,18 +258,27 @@ app.post('/api/scrape-media', wrap(async (req, res) => { try { res.json(await re
 //   CHAT_MODEL overrides the model name. The key never leaves the server.
 // ---------------------------------------------------------------------------
 const chatHits = []; let geminiModel = process.env.CHAT_MODEL || 'gemini-3.8-flash';
-const SYSTEM = `You are C.A.S.P.E.R. (Calculated Asset Security and Personal Expense Recorder), the assistant built into the user's personal finance and life dashboard, Wally MK 2. Address the user as "sir". Be direct, warm and concise: a few short sentences or a short list unless asked for depth. You can answer any general question (knowledge, coding, writing, planning, maths) as well as questions about the user's own data. A snapshot of the user's current data is supplied below as JSON; use it when relevant, quote amounts in Indian rupees with the ₹ sign, and never invent figures that are not in it. For financial or legal decisions give the facts and trade-offs rather than a firm instruction, and say you are not a financial adviser when it matters. You cannot change the user's data yourself; if they want an entry added, tell them the built-in commands (for example "spent 250 on lunch" or "task: pay rent").`;
+const SYSTEM = `You are C.A.S.P.E.R. (Calculated Asset Security and Personal Expense Recorder), the assistant built into the user's personal finance and life dashboard, Wally MK 3. Address the user as "sir". Be direct, warm and concise: a few short sentences or a short list unless asked for depth. You can answer any general question (knowledge, coding, writing, planning, maths) as well as questions about the user's own data. A snapshot of the user's current data is supplied below as JSON; use it when relevant, quote amounts in Indian rupees with the ₹ sign, and never invent figures that are not in it. For financial or legal decisions give the facts and trade-offs rather than a firm instruction, and say you are not a financial adviser when it matters. You cannot change the user's data yourself; if they want an entry added, tell them the built-in commands (for example "spent 250 on lunch" or "task: pay rent").`;
 async function askAI(messages, context) {
   const system = SYSTEM + '\n\nUSER DATA SNAPSHOT:\n' + JSON.stringify(context || {}).slice(0, 12000);
   const post = async (url, headers, body) => { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 45000); try { const r = await fetch(url, { method: 'POST', signal: ctl.signal, headers: Object.assign({ 'content-type': 'application/json' }, headers), body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error((j.error && (j.error.message || j.error)) || ('HTTP ' + r.status)); return j; } finally { clearTimeout(t); } };
   if (AI === 'anthropic') { const j = await post('https://api.anthropic.com/v1/messages', { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, { model: process.env.CHAT_MODEL || 'claude-haiku-4-5-20251001', max_tokens: 1000, system, messages }); return (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n'); }
   if (AI === 'gemini') {
     const call = model => post('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', { 'x-goog-api-key': process.env.GEMINI_API_KEY }, { systemInstruction: { parts: [{ text: system }] }, contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 1000 } });
+    const busy = e => /high demand|overloaded|unavailable|try again|resource.?exhausted|quota|rate|HTTP (429|500|502|503)/i.test(String(e.message));
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const attempt = async model => { let last; for (const d of [0, 1500, 4000]) { if (d) await wait(d); try { return await call(model); } catch (e) { last = e; if (!busy(e)) throw e; } } throw last; };
     let j;
-    try { j = await call(geminiModel); }
-    catch (e) {                                                   // Google retires model names; when the error names the replacement, switch to it and carry on
-      const m = String(e.message).match(/use\s+(?:models\/)?(gemini-[\w.\-]+)/i); if (!m || m[1] === geminiModel) throw e;
-      console.log('Gemini model ' + geminiModel + ' is retired, switching to ' + m[1]); geminiModel = m[1]; j = await call(geminiModel);
+    try { j = await attempt(geminiModel); }
+    catch (e) {
+      const m = String(e.message).match(/use\s+(?:models\/)?(gemini-[\w.\-]+)/i);                 // Google retired the model and named its replacement
+      if (m && m[1] !== geminiModel) { console.log('Gemini model ' + geminiModel + ' is retired, switching to ' + m[1]); geminiModel = m[1]; j = await attempt(geminiModel); }
+      else if (busy(e)) {                                                                              // still overloaded: try the other Flash models this key can use
+        let alts = (process.env.CHAT_FALLBACK_MODELS || '').split(',').map(x => x.trim()).filter(Boolean);
+        if (!alts.length) { try { const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY } }), l = await r.json(); alts = (l.models || []).filter(x => (x.supportedGenerationMethods || []).includes('generateContent') && /gemini-.*flash/i.test(x.name) && !/image|tts|audio|live|embed|preview-0|exp/i.test(x.name)).map(x => x.name.replace(/^models\//, '')).filter(n => n !== geminiModel).sort().reverse().slice(0, 3); } catch (x) {} }
+        let done = false; for (const alt of alts) { try { j = await call(alt); console.log('Gemini ' + geminiModel + ' is busy, answered with ' + alt); done = true; break; } catch (x) {} }
+        if (!done) throw new Error('Google’s AI is overloaded right now and the backup models are busy too. Try again in a minute.');
+      } else throw e;
     }
     return (((j.candidates || [])[0] || {}).content || { parts: [] }).parts.map(p => p.text || '').join('');
   }
@@ -274,7 +301,7 @@ const ROOT = path.join(__dirname, '..');
 app.use((req, res, next) => { if (/^\/(server|node_modules|\.git)(\/|$)/.test(req.path) || /\.(env|md)$/i.test(req.path)) return res.status(404).end(); next(); });
 app.use(express.static(ROOT, { extensions: ['html'] }));
 
-app.listen(PORT, () => console.log(`Wally MK 2 server on port ${PORT} • storage: ${store.kind} • ${PASS ? 'password gate on' + (process.env.SITE_PASSWORD ? ' (SITE_PASSWORD)' : ' (using WALLY_KEY as the password)') : 'NO PASSWORD OR KEY SET (open to anyone who has the link)'}`));
+app.listen(PORT, () => console.log(`Wally MK 3 server on port ${PORT} • storage: ${store.kind} • ${process.env.SITE_GATE === 'off' ? 'sign-in page off' : PASS ? 'password gate on' + (process.env.SITE_PASSWORD ? ' (SITE_PASSWORD)' : ' (using WALLY_KEY as the password)') : 'NO PASSWORD OR KEY SET (open to anyone who has the link)'}`));
 
 // keep-awake: free hosts put the server to sleep when nobody visits. Visiting our own public address
 // every 10 minutes counts as a visit. Render sets RENDER_EXTERNAL_URL by itself; elsewhere set KEEP_AWAKE_URL.
