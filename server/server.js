@@ -23,6 +23,7 @@ function fileStore() {
   const save = () => { clearTimeout(timer); timer = setTimeout(() => { const tmp = DATA_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DATA_FILE); }, 150); };
   return {
     kind: 'file',
+    async entries(col) { return Object.entries(db[col] || {}); },
     async all(col) { return Object.values(db[col] || {}); },
     async get(col, id) { return (db[col] || {})[id] || null; },
     async set(col, id, val) { (db[col] = db[col] || {})[id] = val; save(); },
@@ -42,6 +43,7 @@ function firestoreStore() {
   db().catch(() => {});
   return {
     kind: 'firestore',
+    async entries(col) { const s = await (await c(col)).get(); return s.docs.map(d => { let id = d.id; try { id = decodeURIComponent(d.id); } catch (e) {} return [id, d.data().v]; }); },
     async all(col) { const s = await (await c(col)).get(); return s.docs.map(d => d.data().v); },
     async get(col, id) { const d = await (await c(col)).doc(safe(id)).get(); return d.exists ? d.data().v : null; },
     async set(col, id, val) { await (await c(col)).doc(safe(id)).set({ v: val }); },
@@ -51,6 +53,26 @@ function firestoreStore() {
 let store;
 try { store = process.env.FIREBASE_SERVICE_ACCOUNT ? firestoreStore() : fileStore(); }
 catch (e) { console.error('Firestore could not start, falling back to the local file:', e.message); store = fileStore(); }
+
+// ----------------------------------------------------------------------------- memory copy + live updates
+// The server keeps each list in memory after the first read and writes every change through to the
+// database. Reads then cost nothing, so devices can check for changes every few seconds without using
+// up the free database quota. "rev" goes up by one on every change; devices compare it to know when to sync.
+const BOOT = Date.now().toString(36); let rev = 0; const listeners = new Set(); let bt = null;
+const announce = () => { rev++; clearTimeout(bt); bt = setTimeout(() => { for (const r of listeners) { try { r.write('data: ' + BOOT + ':' + rev + '\n\n'); } catch (e) { listeners.delete(r); } } }, 120); };
+function withMemory(inner) {
+  const mem = {};
+  const load = col => mem[col] || (mem[col] = inner.entries(col).then(list => new Map(list)).catch(e => { delete mem[col]; throw e; }));
+  return {
+    kind: inner.kind,
+    async all(col) { return [...(await load(col)).values()]; },
+    async get(col, id) { const v = (await load(col)).get(String(id)); return v === undefined ? null : v; },
+    async set(col, id, val) { const m = await load(col); if (m.has(String(id)) && JSON.stringify(m.get(String(id))) === JSON.stringify(val)) return;   // nothing new: no write, no wake-up for other devices
+      try { await inner.set(col, id, val); } catch (e) { delete mem[col]; throw e; } m.set(String(id), val); if (process.env.WALLY_DEBUG) console.log('SET', col, String(id).slice(0, 40)); announce(); },
+    async del(col, id) { const m = await load(col); if (!m.has(String(id))) return; try { await inner.del(col, id); } catch (e) { delete mem[col]; throw e; } m.delete(String(id)); announce(); }
+  };
+}
+store = withMemory(store);
 
 // ----------------------------------------------------------------------------- app
 const app = express();
@@ -65,19 +87,28 @@ app.use('/api', (req, res, next) => {
   res.status(401).json({ error: 'key required' });
 });
 
+// live updates: /api/rev is a cheap "has anything changed" check, /api/events pushes the same number the moment it changes
+app.get('/api/rev', (req, res) => res.json({ boot: BOOT, rev, clients: listeners.size }));
+app.get('/api/events', (req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+  res.write('retry: 4000\n\ndata: ' + BOOT + ':' + rev + '\n\n'); listeners.add(res);
+  const beat = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
+  req.on('close', () => { clearInterval(beat); listeners.delete(res); });
+});
+
 // ledger
 app.get('/api/get-transactions', wrap(async (req, res) => res.json(await store.all('transactions'))));
 // a deleted item is remembered, so another device that still holds it cannot quietly put it back
 const isGone = async (kind, id) => !!(await store.get('deleted', kind + ':' + id));
 app.post('/api/add-transaction', wrap(async (req, res) => { const t = req.body || {}; if (t.id == null) return res.status(400).json({ error: 'id missing' }); if (await isGone('tx', String(t.id))) return res.json({ success: true, skipped: 'deleted' }); await store.set('transactions', String(t.id), t); res.json({ success: true }); }));
-app.delete('/api/delete-transaction/:id', wrap(async (req, res) => { await store.del('transactions', req.params.id); await store.set('deleted', 'tx:' + req.params.id, { kind: 'tx', id: req.params.id, at: Date.now() }); res.json({ success: true }); }));
+app.delete('/api/delete-transaction/:id', wrap(async (req, res) => { await store.del('transactions', req.params.id); if (!(await isGone('tx', req.params.id))) await store.set('deleted', 'tx:' + req.params.id, { kind: 'tx', id: req.params.id, at: Date.now() }); res.json({ success: true }); }));
 app.get('/api/deleted', wrap(async (req, res) => { const all = await store.all('deleted'); res.json({ tx: all.filter(d => d.kind === 'tx').map(d => d.id), wish: all.filter(d => d.kind === 'wish').map(d => d.id) }); }));
 app.post('/api/undelete', wrap(async (req, res) => { for (const id of (req.body.tx || [])) await store.del('deleted', 'tx:' + id); for (const id of (req.body.wish || [])) await store.del('deleted', 'wish:' + id); res.json({ success: true }); }));
 
 // wishlist + library share one list (library items carry isMedia: true)
 app.get('/api/get-wishlist', wrap(async (req, res) => res.json(await store.all('wishlist'))));
 app.post('/api/add-wishlist', wrap(async (req, res) => { const w = req.body || {}; if (w.id == null) return res.status(400).json({ error: 'id missing' }); if (await isGone('wish', String(w.id))) return res.json({ success: true, skipped: 'deleted' }); await store.set('wishlist', String(w.id), w); res.json({ success: true }); }));
-app.delete('/api/delete-wishlist/:id', wrap(async (req, res) => { await store.del('wishlist', req.params.id); await store.set('deleted', 'wish:' + req.params.id, { kind: 'wish', id: req.params.id, at: Date.now() }); res.json({ success: true }); }));
+app.delete('/api/delete-wishlist/:id', wrap(async (req, res) => { await store.del('wishlist', req.params.id); if (!(await isGone('wish', req.params.id))) await store.set('deleted', 'wish:' + req.params.id, { kind: 'wish', id: req.params.id, at: Date.now() }); res.json({ success: true }); }));
 
 // workspace
 app.get('/api/get-workspace', wrap(async (req, res) => res.json((await store.get('meta', 'workspace')) || {})));
@@ -175,3 +206,12 @@ app.use((req, res, next) => { if (/^\/(server|node_modules|\.git)(\/|$)/.test(re
 app.use(express.static(ROOT, { extensions: ['html'] }));
 
 app.listen(PORT, () => console.log(`Wally MK 2 server on port ${PORT} • storage: ${store.kind} • ${KEY ? 'locked with WALLY_KEY' : 'NO KEY SET (open to anyone who has the link)'}`));
+
+// keep-awake: free hosts put the server to sleep when nobody visits. Visiting our own public address
+// every 10 minutes counts as a visit. Render sets RENDER_EXTERNAL_URL by itself; elsewhere set KEEP_AWAKE_URL.
+// Set KEEP_AWAKE=off to disable.
+const SELF = (process.env.KEEP_AWAKE_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
+if (SELF && process.env.KEEP_AWAKE !== 'off') {
+  const ping = () => fetch(SELF + '/api/health').then(r => { if (!r.ok) console.error('keep-awake ping answered ' + r.status); }).catch(e => console.error('keep-awake ping failed: ' + e.message));
+  setInterval(ping, 10 * 60 * 1000); console.log('Keep-awake is on for ' + SELF);
+}
