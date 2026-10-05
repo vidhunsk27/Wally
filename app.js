@@ -6967,6 +6967,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
             catch (e) { box.innerHTML = '<div class="cx-empty">The place search did not answer. Check the connection.</div>'; }
         },
         pick(i) { const x = (CX11._hits || [])[i]; if (x) setLoc(x.latitude, x.longitude, x.name); },
+        async signOut() { try { await fetch(API_BASE + '/logout', { method: 'POST' }); } catch (e) {} try { localStorage.removeItem('walletCloudKey'); } catch (e) {} location.reload(); },
         get wx() { return wx; }, activities
     };
 
@@ -7021,7 +7022,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         const m = $('cxSysModal'); if (!m || $('cx11Up')) return; const on = m.querySelector('.cx-btn.on'); if (!on || on.textContent.trim() !== 'Cloud') return;
         const host = m.firstElementChild; host.insertAdjacentHTML('beforeend', '<div id="cx11Up" class="cx-row" style="margin-top:10px;font-size:12.5px;color:#cbd5e1;display:block;line-height:1.7">Checking the server…</div>');
         await probe(); const el = $('cx11Up'); if (!el) return; const h = ai.health;
-        el.innerHTML = !h ? 'The server did not answer just now.' : `<b class="text-white">Server awake for ${dur(h.up || 0)}</b> without a restart.<br>Keep-awake: ${h.awake ? `<b style="color:#34d399">on</b>, ${h.awake.pings} self-visit${h.awake.pings === 1 ? '' : 's'} so far${h.awake.last ? ', last ' + dur(Math.round((Date.now() - h.awake.last) / 1000)) + ' ago' + (h.awake.ok === false ? ' <b style="color:#f87171">(failed)</b>' : '') : ' (first one is due 10 minutes after start)'}` : h.up === undefined ? 'this server runs an older file, upload the new server.js' : '<b style="color:#fbbf24">off</b> (no public address known to the server)'}.<br>Storage: ${esc(h.store || '')} • AI chat: ${h.ai ? '<b style="color:#34d399">' + esc(h.ai) + '</b>' : 'no key set'}.<br><span style="color:#94a3b8">If “awake for” keeps growing past a few hours with no one using the app, the server is not being put to sleep.</span>`;
+        el.innerHTML = !h ? 'The server did not answer just now.' : `<b class="text-white">Server awake for ${dur(h.up || 0)}</b> without a restart.<br>Keep-awake: ${h.awake ? `<b style="color:#34d399">on</b>, ${h.awake.pings} self-visit${h.awake.pings === 1 ? '' : 's'} so far${h.awake.last ? ', last ' + dur(Math.round((Date.now() - h.awake.last) / 1000)) + ' ago' + (h.awake.ok === false ? ' <b style="color:#f87171">(failed)</b>' : '') : ' (first one is due 10 minutes after start)'}` : h.up === undefined ? 'this server runs an older file, upload the new server.js' : '<b style="color:#fbbf24">off</b> (no public address known to the server)'}.<br>Storage: ${esc(h.store || '')} • AI chat: ${h.ai ? '<b style="color:#34d399">' + esc(h.ai) + '</b>' : 'no key set'}.<br>Password gate: ${h.gate ? '<b style="color:#34d399">on</b> <button class="cx-btn red sm" style="margin-left:8px" onclick="CX11.signOut()">Sign out of this device</button>' : h.gate === false ? '<b style="color:#fbbf24">off</b>' : 'needs the new server.js'}.<br><span style="color:#94a3b8">If “awake for” keeps growing past a few hours with no one using the app, the server is not being put to sleep.</span>`;
     }
 
     const start = () => {
