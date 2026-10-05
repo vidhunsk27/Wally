@@ -74,13 +74,16 @@ function withMemory(inner) {
 }
 store = withMemory(store);
 
+const awake = { pings: 0, last: 0, ok: null };
+const SELF_URL = process.env.KEEP_AWAKE === 'off' ? '' : (process.env.KEEP_AWAKE_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
 // ----------------------------------------------------------------------------- app
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '8mb' }));
 const wrap = fn => (req, res) => fn(req, res).catch(e => { console.error(e); res.status(500).json({ error: 'server error' }); });
 
-app.get('/api/health', (req, res) => res.json({ ok: true, store: store.kind, locked: !!KEY, time: Date.now() }));
+const AI = process.env.ANTHROPIC_API_KEY ? 'anthropic' : process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENAI_API_KEY ? 'openai' : '';
+app.get('/api/health', (req, res) => res.json({ ok: true, store: store.kind, locked: !!KEY, time: Date.now(), up: Math.round(process.uptime()), ai: AI || false, awake: SELF_URL ? awake : false }));
 app.use('/api', (req, res, next) => {
   if (!KEY) return next();
   if ((req.get('x-wally-key') || req.query.key) === KEY) return next();
@@ -198,6 +201,30 @@ app.post('/api/scrape-price', wrap(async (req, res) => { try { res.json(await re
 app.post('/api/scrape-media', wrap(async (req, res) => { try { res.json(await readPage(String(req.body.url || ''))); } catch (e) { res.json({ title: '' }); } }));
 
 // AI routes are not configured here; the app falls back to its built-in analysis
+// ---------------------------------------------------------------------------
+// C.A.S.P.E.R. chat: forwards open questions to an AI service when a key is set on the server.
+//   ANTHROPIC_API_KEY (Claude)  |  GEMINI_API_KEY (Google)  |  OPENAI_API_KEY (+ OPENAI_BASE_URL for compatible services)
+//   CHAT_MODEL overrides the model name. The key never leaves the server.
+// ---------------------------------------------------------------------------
+const chatHits = []; 
+const SYSTEM = `You are C.A.S.P.E.R. (Calculated Asset Security and Personal Expense Recorder), the assistant built into the user's personal finance and life dashboard, Wally MK 2. Address the user as "sir". Be direct, warm and concise: a few short sentences or a short list unless asked for depth. You can answer any general question (knowledge, coding, writing, planning, maths) as well as questions about the user's own data. A snapshot of the user's current data is supplied below as JSON; use it when relevant, quote amounts in Indian rupees with the ₹ sign, and never invent figures that are not in it. For financial or legal decisions give the facts and trade-offs rather than a firm instruction, and say you are not a financial adviser when it matters. You cannot change the user's data yourself; if they want an entry added, tell them the built-in commands (for example "spent 250 on lunch" or "task: pay rent").`;
+async function askAI(messages, context) {
+  const system = SYSTEM + '\n\nUSER DATA SNAPSHOT:\n' + JSON.stringify(context || {}).slice(0, 12000);
+  const post = async (url, headers, body) => { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 45000); try { const r = await fetch(url, { method: 'POST', signal: ctl.signal, headers: Object.assign({ 'content-type': 'application/json' }, headers), body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error((j.error && (j.error.message || j.error)) || ('HTTP ' + r.status)); return j; } finally { clearTimeout(t); } };
+  if (AI === 'anthropic') { const j = await post('https://api.anthropic.com/v1/messages', { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, { model: process.env.CHAT_MODEL || 'claude-haiku-4-5-20251001', max_tokens: 1000, system, messages }); return (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n'); }
+  if (AI === 'gemini') { const j = await post('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(process.env.CHAT_MODEL || 'gemini-2.5-flash') + ':generateContent', { 'x-goog-api-key': process.env.GEMINI_API_KEY }, { systemInstruction: { parts: [{ text: system }] }, contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 1000 } }); return (((j.candidates || [])[0] || {}).content || { parts: [] }).parts.map(p => p.text || '').join(''); }
+  if (AI === 'openai') { const j = await post((process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '') + '/chat/completions', { authorization: 'Bearer ' + process.env.OPENAI_API_KEY }, { model: process.env.CHAT_MODEL || 'gpt-4o-mini', max_tokens: 1000, messages: [{ role: 'system', content: system }].concat(messages) }); return (((j.choices || [])[0] || {}).message || {}).content || ''; }
+  throw new Error('no AI key set');
+}
+app.post('/api/chat', wrap(async (req, res) => {
+  if (!AI) return res.status(503).json({ error: 'No AI key is set on the server.' });
+  const now = Date.now(); while (chatHits.length && now - chatHits[0] > 60000) chatHits.shift(); if (chatHits.length >= 20) return res.status(429).json({ error: 'Too many questions in a minute. Give it a moment.' }); chatHits.push(now);
+  let msgs = (Array.isArray(req.body.messages) ? req.body.messages : []).filter(m => m && typeof m.content === 'string' && m.content.trim()).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content.slice(0, 6000) })).slice(-16);
+  while (msgs.length && msgs[0].role !== 'user') msgs.shift(); if (!msgs.length) return res.status(400).json({ error: 'message missing' });
+  try { const reply = await askAI(msgs, req.body.context); res.json({ reply: reply || 'I have no answer for that, sir.', provider: AI }); }
+  catch (e) { console.error('chat failed: ' + e.message); res.status(502).json({ error: String(e.message).slice(0, 300) }); }
+}));
+
 ['jarvis-advice', 'jarvis-predict', 'jarvis-report'].forEach(r => app.post('/api/' + r, (req, res) => res.status(503).send('AI engine not configured')));
 
 // ----------------------------------------------------------------------------- the app itself
@@ -210,8 +237,7 @@ app.listen(PORT, () => console.log(`Wally MK 2 server on port ${PORT} • storag
 // keep-awake: free hosts put the server to sleep when nobody visits. Visiting our own public address
 // every 10 minutes counts as a visit. Render sets RENDER_EXTERNAL_URL by itself; elsewhere set KEEP_AWAKE_URL.
 // Set KEEP_AWAKE=off to disable.
-const SELF = (process.env.KEEP_AWAKE_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
-if (SELF && process.env.KEEP_AWAKE !== 'off') {
-  const ping = () => fetch(SELF + '/api/health').then(r => { if (!r.ok) console.error('keep-awake ping answered ' + r.status); }).catch(e => console.error('keep-awake ping failed: ' + e.message));
+if (SELF_URL) { const SELF = SELF_URL;
+  const ping = () => fetch(SELF + '/api/health').then(r => { awake.pings++; awake.last = Date.now(); awake.ok = r.ok; if (!r.ok) console.error('keep-awake ping answered ' + r.status); }).catch(e => { awake.last = Date.now(); awake.ok = false; console.error('keep-awake ping failed: ' + e.message); });
   setInterval(ping, 10 * 60 * 1000); console.log('Keep-awake is on for ' + SELF);
 }
