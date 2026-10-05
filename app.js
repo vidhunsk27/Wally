@@ -3108,6 +3108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isLog = /^(spent|paid|add \d|add ₹|earned|received|got)\b/.test(ml);
         let reply;
         if (!isLog) { try { reply = brain(msg); } catch (e) { console.warn('CASPER brain error', e); reply = undefined; } }
+        if (reply === undefined && !isLog && !/^(help|commands|menu|\?|balance|summary|top|explain)$/.test(ml) && !/my balance|this month|how to/.test(ml) && window.CXAI && window.CXAI.ready()) return window.CXAI.ask(msg);   // open questions go to the AI when the server has one
         if (reply === null || /^(help|commands|menu|\?)$/.test(ml) || (reply === undefined && !isLog && !/^(balance|summary|top|explain)$/.test(ml) && !/my balance|this month|how to/.test(ml))) reply = reply || HELP;
         if (reply === undefined || reply === null) return prevSend.apply(this, arguments);
         body.insertAdjacentHTML('beforeend', `<div class="bg-black/60 border border-[#00e5ff]/40 p-3 rounded-xl rounded-tr-none w-10/12 ml-auto text-white shadow-[0_0_10px_rgba(0,229,255,0.2)]">${esc(msg)}</div>`);
@@ -5544,9 +5545,9 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     function command() {
         const dash = $('viewDashboard'); if (!dash) return;
         if (!$('cxCmd')) dash.insertAdjacentHTML('afterbegin', `<div id="cxCmd" class="glass-panel"><div class="hi"><p id="cxCmdLine"></p><h3 id="cxCmdHi"></h3></div><div id="cxClock"><b id="cxClockT">--:--</b><small id="cxClockD"></small></div></div>`);
-        $('cxCmdHi').textContent = `${greet()}, sir.`; $('cxCmdLine').textContent = 'C.A.S.P.E.R.';
+        $('cxCmdHi').textContent = `${greet()}, sir`; $('cxCmdLine').textContent = 'C.A.S.P.E.R.';
     }
-    function clock() { const t = $('cxClockT'); if (!t) return; const n = new Date(); t.innerHTML = `${String(n.getHours()).padStart(2, '0')}<i>:</i>${String(n.getMinutes()).padStart(2, '0')}`; $('cxClockD').textContent = n.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }); if (n.getSeconds() < 1 || !$('cxCmdHi').textContent.startsWith(greet())) $('cxCmdHi').textContent = `${greet()}, sir.`; }
+    function clock() { const t = $('cxClockT'); if (!t) return; const n = new Date(); t.innerHTML = `${String(n.getHours()).padStart(2, '0')}<i>:</i>${String(n.getMinutes()).padStart(2, '0')}`; $('cxClockD').textContent = n.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }); if (n.getSeconds() < 1 || !$('cxCmdHi').textContent.startsWith(greet())) $('cxCmdHi').textContent = `${greet()}, sir`; }
     const MODS = [['dashboard', '#00e5ff', 'activity', 'Dashboard'], ['investments', '#fbbf24', 'pie-chart', 'Investments'], ['wishlist', '#38bdf8', 'target', 'Wishlist'], ['media', '#a855f7', 'library', 'Library'], ['workspace', '#34d399', 'pen-tool', 'Workspace'], ['growth', '#f97316', 'zap', 'Growth'], ['planner', '#f472b6', 'calendar-check', 'Planner']];
     function footer() {
         const main = $('mainContainer'); if (!main || $('cxFoot')) return;
@@ -5839,6 +5840,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     function modal(id, title, body) { const old = $(id); if (old) old.remove(); document.body.insertAdjacentHTML('beforeend', `<div class="cx-modal" id="${id}"><div style="width:min(640px,100%)"><h3><span>${title}</span><button class="cx-btn red sm" onclick="document.getElementById('${id}').remove()">Close</button></h3>${body}</div></div>`); $(id).addEventListener('mousedown', e => { if (e.target.id === id) $(id).remove(); }); icons(); return $(id); }
     let sysTab = 'data';
     async function system(tab) {
+        if ((tab || sysTab) === 'remind') { try { localStorage.setItem('cxNotifSeen', String(Date.now())); } catch (e) {} setTimeout(paintStatus, 50); }
         sysTab = tab || sysTab; const c = ncfg(); let body = '';
         const tabs = [['data', 'Data vault'], ['cloud', 'Cloud'], ['remind', 'Reminders'], ['keys', 'Shortcuts']].map(t => `<button class="cx-btn sm ${sysTab === t[0] ? 'on' : ''}" onclick="CXSys.open('${t[0]}')">${t[1]}</button>`).join('');
         if (sysTab === 'data') {
@@ -5867,6 +5869,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         modal('cxSysModal', 'System', `<div class="flex gap-2 flex-wrap" style="margin-bottom:14px">${tabs}</div>${body}`);
     }
     window.CXSys = {
+        paint: () => paintStatus(),
         open: system, exportAll, importAll, restore, sync: () => syncNow(true).then(() => $('cxSysModal') && system('cloud')),
         snap: () => snapshot('Manual').then(() => { toast('Copy saved.'); system('data'); }),
         persist: async () => { try { const ok = await navigator.storage.persist(); toast(ok ? 'The browser will keep this data.' : 'The browser declined for now. Installing the app usually grants it.', !ok); } catch (e) {} system('data'); },
@@ -5878,7 +5881,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         snapshot, dueNow: due
     };
     function paintStatus() {
-        const b = $('cxBell'); if (b) { const n = nlog().items.length; b.querySelector('em').textContent = n || ''; b.querySelector('em').style.display = n ? '' : 'none'; }
+        const b = $('cxBell'); if (b) { const seen = +localStorage.getItem('cxNotifSeen') || 0, n = nlog().items.filter(i => (i.at || 0) > seen).length; b.querySelector('em').textContent = n || ''; b.querySelector('em').style.display = n ? '' : 'none'; }
         const c = $('cxCloudDot'); if (c) { const col = { online: '#34d399', offline: '#64748b', locked: '#fbbf24', error: '#f87171', unknown: '#64748b' }[cloud.state]; c.style.background = col; c.style.boxShadow = cloud.state === 'online' ? '0 0 8px #34d399' : 'none'; c.parentElement.title = cloud.state === 'online' ? 'Connected to your server' : cloud.state === 'locked' ? 'Server needs your key' : 'Working from this device only'; }
     }
     function headerButtons() {
@@ -6317,7 +6320,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
             log.items = log.items.filter(i => i.id !== 'c' + r.id); log.items.unshift({ id: 'c' + r.id, tab: r.tab || 'planner', t: r.title, b: r.note || repTxt(r), at: Date.now() }); setJ('walletNotifLog', log);
             notify(r.title, r.note || 'Reminder from C.A.S.P.E.R., sir.', r.tab || 'planner', 'wally-c' + r.id); toast('Reminder: ' + r.title);
         });
-        if (ch) { setJ(RK, list); if ($('cx8Rem')) drawRems(); }
+        if (ch) { setJ(RK, list); if ($('cx8Rem')) drawRems(); try { window.CXSys && CXSys.paint && CXSys.paint(); } catch (e) {} }
     }
     let remDays = [];
     function remForm() {
@@ -6686,8 +6689,6 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         .glass-panel:hover { transform: none !important; }
         #cxBg { opacity: .45; } .bg-mesh, .scanline, body::before, body::after { animation: none !important; }
         .view-card { transition: opacity .2s ease !important; transform: none !important; }
-        .view-card.active .glass-panel { content-visibility: auto; contain-intrinsic-size: auto 320px; }
-        .chart-stack-container, .stats-stack-container, #cxIntro, #cxCmd, .view-card.active .glass-panel:has(canvas) { content-visibility: visible; }
     }
     @media (max-width: 640px) {
         /* roomier: one clear column, consistent gaps, nothing hiding under the floating buttons */
@@ -6784,7 +6785,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         const pf = getJ('walletPortfolio', []), inv = pf.reduce((s, h) => s + (+h.current || +h.invested || 0), 0);
         const wl = wishlistItems.filter(w => !w.purchased), can = wl.filter(w => +w.price > 0 && +w.price <= bal.liquid).length;
         return [
-            { s: 'L n0', c: '#00e5ff', k: 'Liquid assets', v: inr(bal.liquid), d: 'Emergency fund ' + inr(bal.ef || 0), tip: 'Cash, bank and UPI you can use now. Tap for the ledger.', go: () => { const e = $('transactionList') || $('aiTerminal'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+            { s: 'L n0', c: '#00e5ff', k: 'Liquid assets', v: inr(bal.liquid), d: 'Emergency fund ' + inr(bal.ef || 0), tip: 'Cash, bank and UPI you can use now. Tap for the ledger.', go: () => { const e = $('ledgerList') || $('aiTerminal'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
             { s: 'L n1', c: '#fbbf24', k: 'Safe to spend today', v: inr(st.safe), d: (st.dim - st.day + 1) + ' days left this month', tip: 'Budget left, divided by the days left. Tap for the month forecast.', go: () => { try { getCASPERForecast(); } catch (e) {} const e = $('aiTerminal'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); } },
             { s: 'L n2', c: pct >= 90 ? '#f87171' : '#34d399', k: 'Spent today', v: inr(spent), d: pct + '% of the month’s budget used', tip: 'Today’s expenses and how much of the budget is gone. Tap for the spend map.', go: () => { const e = $('upgHeatmap'); if (e) e.closest('.glass-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
             { s: 'R n0', c: late ? '#f87171' : '#c6f432', k: 'Planner', v: due + ' due today', d: late ? late + ' overdue' : tk.length + ' open in total', tip: 'Open tasks from the Planner. Tap to open it.', go: () => switchMainView('planner') },
@@ -6836,4 +6837,199 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
     window.CX10 = { paintNodes, facts };
+})();
+
+
+/* ============================================================================
+   WALLY MK 2 — ROUND 12 (appended; nothing above is changed)
+   1 live weather in the header + activities that suit the conditions
+   2 C.A.S.P.E.R. answers open questions through the server's AI key
+   3 server uptime / keep-awake read-out in the Cloud panel
+   ============================================================================ */
+(function () {
+    'use strict';
+    if (!window.CX) return;
+    const { $, esc, inr, getJ, icons, todayStr, toast, monthStats, balances } = window.CX;
+    const safe = fn => { try { return fn(); } catch (e) { console.warn('v11', e); } };
+    const LS = { get: (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+
+    const css = document.createElement('style');
+    css.textContent = `
+    #cx11Wx { display: flex; align-items: center; gap: 10px; margin: 0 auto; padding: 6px 14px; border-radius: 14px; border: 1px solid rgba(0,229,255,.28); background: rgba(0,229,255,.05); cursor: pointer; min-width: 0; max-width: 430px; transition: border-color .2s, background .2s; text-align: left; }
+    #cx11Wx:hover { border-color: #00e5ff; background: rgba(0,229,255,.1); }
+    #cx11Wx .ic { font-size: 26px; line-height: 1; flex: 0 0 auto; } #cx11Wx .t { font: 800 22px 'Oxanium', sans-serif; color: #fff; line-height: 1; flex: 0 0 auto; } #cx11Wx .t sup { font-size: 11px; color: #7dd3fc; }
+    #cx11Wx .d { min-width: 0; } #cx11Wx .d b { display: block; font: 700 11.5px 'Oxanium', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #00e5ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #cx11Wx .d span { display: block; font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #cx11Wx .tip { font: 600 11px 'Oxanium', sans-serif; color: #fbbf24; border-left: 1px solid rgba(255,255,255,.12); padding-left: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    @media (max-width: 900px) { #cx11Wx .tip { display: none; } } @media (max-width: 640px) { #cx11Wx { order: 5; width: 100%; max-width: none; margin: 8px 0 0; } #cx11Wx .tip { display: block; flex: 1; text-align: right; border: 0; } }
+    .cx11-now { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; } .cx11-now .big { font: 800 52px 'Oxanium', sans-serif; color: #fff; line-height: 1; } .cx11-now .ic { font-size: 54px; line-height: 1; }
+    .cx11-hours { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; } .cx11-hours div { flex: 0 0 58px; text-align: center; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 7px 2px; font: 600 11px 'Oxanium', sans-serif; color: #cbd5e1; } .cx11-hours b { display: block; font-size: 14px; color: #fff; } .cx11-hours i { display: block; font-style: normal; font-size: 18px; } .cx11-hours em { font-style: normal; color: #38bdf8; font-size: 10px; }
+    .cx11-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; margin-bottom: 14px; } .cx11-days div { border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 8px; text-align: center; font: 600 11px 'Oxanium', sans-serif; color: #94a3b8; } .cx11-days b { color: #fff; font-size: 13px; display: block; } .cx11-days i { font-style: normal; font-size: 20px; display: block; }
+    .cx11-act { display: grid; gap: 7px; } .cx11-act > div { display: flex; gap: 10px; align-items: center; border: 1px solid rgba(255,255,255,.09); border-left: 3px solid var(--c, #00e5ff); border-radius: 12px; padding: 9px 11px; } .cx11-act i { font-style: normal; font-size: 22px; flex: 0 0 auto; } .cx11-act b { display: block; color: #fff; font-size: 13.5px; } .cx11-act span { font-size: 12px; color: #94a3b8; line-height: 1.4; } .cx11-act .flex-1 { min-width: 0; }
+    .cx11-ai { white-space: normal; line-height: 1.55; } .cx11-ai code { background: rgba(0,0,0,.5); padding: 1px 5px; border-radius: 5px; font-size: 11px; color: #fbbf24; } .cx11-ai pre { background: rgba(0,0,0,.6); border: 1px solid rgba(0,229,255,.2); border-radius: 8px; padding: 8px; overflow-x: auto; margin: 6px 0; font-size: 11px; color: #e2e8f0; white-space: pre; } .cx11-ai ul { padding-left: 16px; list-style: disc; margin: 4px 0; } .cx11-ai b { color: #fff; }
+    #cx11AiTag { font: 700 9px 'Oxanium', sans-serif; letter-spacing: .12em; text-transform: uppercase; display: block; margin-top: 2px; }
+    #casperChatBody { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+    @media (max-width: 640px) { #casperChatWindow { width: min(350px, calc(100vw - 24px)) !important; height: min(450px, calc(100vh - 190px)) !important; } }
+    `;
+    document.head.appendChild(css);
+    function modal(id, title, body, w) {
+        const old = $(id); if (old) old.remove();
+        document.body.insertAdjacentHTML('beforeend', `<div class="cx-modal" id="${id}"><div style="width:min(${w || 640}px,100%)"><h3><span>${title}</span><button class="cx-btn red sm" onclick="document.getElementById('${id}').remove()">Close</button></h3>${body}</div></div>`);
+        $(id).addEventListener('mousedown', e => { if (e.target.id === id) $(id).remove(); }); icons(); return $(id);
+    }
+
+    // ==========================================================================
+    // 1. WEATHER (Open-Meteo: free, no key, model data refreshed hourly)
+    // ==========================================================================
+    const WMO = c => c === 0 ? ['Clear sky', '☀️', '🌙'] : c === 1 ? ['Mostly clear', '🌤️', '🌙'] : c === 2 ? ['Partly cloudy', '⛅', '☁️'] : c === 3 ? ['Overcast', '☁️', '☁️'] : c === 45 || c === 48 ? ['Fog', '🌫️', '🌫️'] : c >= 51 && c <= 57 ? ['Drizzle', '🌦️', '🌧️'] : c >= 61 && c <= 67 ? [c >= 65 ? 'Heavy rain' : 'Rain', '🌧️', '🌧️'] : c >= 71 && c <= 77 ? ['Snow', '🌨️', '🌨️'] : c >= 80 && c <= 82 ? [c === 82 ? 'Violent showers' : 'Rain showers', '🌦️', '🌧️'] : c === 85 || c === 86 ? ['Snow showers', '🌨️', '🌨️'] : c >= 95 ? ['Thunderstorm', '⛈️', '⛈️'] : ['Unknown', '🌡️', '🌡️'];
+    const wxIcon = (c, day) => WMO(c)[day ? 1 : 2];
+    let wx = LS.get('cxWx', null), wxBusy = false, wxErr = '';
+    const loc = () => LS.get('cxWxLoc', null);
+    async function getJSON(url, ms) { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 12000); try { const r = await (window.__nativeFetch || fetch)(url, { signal: ctl.signal, cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(t); } }
+    async function loadWx(force) {
+        const l = loc(); if (!l || wxBusy) return; if (!force && wx && wx.lat === l.lat && Date.now() - wx.at < 10 * 60000) return paintWx();
+        wxBusy = true; wxErr = '';
+        try {
+            const q = `latitude=${l.lat}&longitude=${l.lon}&timezone=auto`;
+            const f = await getJSON(`https://api.open-meteo.com/v1/forecast?${q}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,weather_code,uv_index,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max&forecast_days=5`);
+            let aq = null; try { aq = await getJSON(`https://air-quality-api.open-meteo.com/v1/air-quality?${q}&current=us_aqi,pm2_5`, 8000); } catch (e) {}
+            const c = f.current, h = f.hourly, now = c.time.slice(0, 13); let i0 = h.time.findIndex(t => t.slice(0, 13) === now); if (i0 < 0) i0 = 0;
+            wx = { at: Date.now(), lat: l.lat, name: l.name, obs: c.time, temp: c.temperature_2m, feels: c.apparent_temperature, hum: c.relative_humidity_2m, rain: c.precipitation, code: c.weather_code, day: !!c.is_day, cloud: c.cloud_cover, wind: c.wind_speed_10m, gust: c.wind_gusts_10m, uv: h.uv_index[i0],
+                hours: h.time.slice(i0, i0 + 12).map((t, k) => ({ t: t.slice(11, 16), temp: h.temperature_2m[i0 + k], pop: h.precipitation_probability[i0 + k], code: h.weather_code[i0 + k], day: !!h.is_day[i0 + k] })),
+                days: f.daily.time.map((t, k) => ({ d: t, code: f.daily.weather_code[k], hi: f.daily.temperature_2m_max[k], lo: f.daily.temperature_2m_min[k], pop: f.daily.precipitation_probability_max[k], rise: f.daily.sunrise[k].slice(11, 16), set: f.daily.sunset[k].slice(11, 16), uv: f.daily.uv_index_max[k] })),
+                aqi: aq && aq.current ? aq.current.us_aqi : null, pm: aq && aq.current ? aq.current.pm2_5 : null };
+            wx.pop3 = Math.max(0, ...wx.hours.slice(0, 3).map(x => x.pop || 0)); LS.set('cxWx', wx);
+        } catch (e) { wxErr = navigator.onLine ? 'Weather service did not answer.' : 'No connection.'; }
+        finally { wxBusy = false; paintWx(); if ($('cx11WxM')) openWx(); }
+    }
+    const aqiTxt = a => a == null ? '' : a <= 50 ? 'Good' : a <= 100 ? 'Moderate' : a <= 150 ? 'Unhealthy for sensitive groups' : a <= 200 ? 'Unhealthy' : a <= 300 ? 'Very unhealthy' : 'Hazardous';
+    const uvTxt = u => u == null ? '' : u < 3 ? 'Low' : u < 6 ? 'Moderate' : u < 8 ? 'High' : u < 11 ? 'Very high' : 'Extreme';
+    function activities() {
+        if (!wx) return []; const A = [], hr = new Date().getHours(), wet = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(wx.code) || wx.rain > 0.1, storm = wx.code >= 95, fog = wx.code === 45 || wx.code === 48, hot = wx.feels >= 35, warm = wx.feels >= 30, cold = wx.feels <= 14, nice = !wet && !storm && wx.feels >= 16 && wx.feels < 31, soon = wx.pop3 >= 50 && !wet, badAir = wx.aqi != null && wx.aqi > 150, dusk = hr >= 17 && hr < 20, dawn = hr >= 5 && hr < 9, night = hr >= 21 || hr < 5, windy = wx.wind >= 30;
+        const fit = () => window.open('fitness/index.html', '_blank'), add = (t, i, n, w, go, lbl, c) => A.push({ i, n, w, go, lbl, c });
+        let reading = null; try { reading = mediaItems.find(m => m.mediaStatus === 'In Progress'); } catch (e) {}
+        const tasks = getJ('walletTasks', []).filter(t => !t.done && (!t.due || t.due <= todayStr()));
+        if (storm) add(0, '⛈️', 'Stay in until the storm passes', 'Thunderstorm in your area. Unplug what you can and keep the phone charged.', null, '', '#f87171');
+        if (wet || storm) { add(0, '🏋️', 'Indoor workout', 'It is raining, so do today’s LEVEL//UP quest indoors: bodyweight circuit or mobility.', fit, 'Open Fitness', '#f97316'); add(0, '📚', reading ? 'Continue “' + String(reading.title).slice(0, 34) + '”' : 'Read or watch something from the Library', 'Good weather for staying in.', () => switchMainView('media'), 'Library', '#a855f7'); add(0, '☕', 'Deep-work block', 'Rain keeps distractions down. Start a focus timer.', () => switchMainView('growth'), 'Growth', '#34d399'); }
+        if (soon) add(0, '☔', 'Carry an umbrella', wx.pop3 + '% chance of rain in the next three hours. Finish outdoor errands early.', null, '', '#38bdf8');
+        if (!wet && !storm) {
+            if (hot && hr >= 11 && hr < 16) add(0, '🥵', 'Avoid the midday sun', 'Feels like ' + Math.round(wx.feels) + '°. Train indoors now and move outdoor plans to after 5 pm.', fit, 'Open Fitness', '#f87171');
+            if (nice && (dawn || dusk) && !badAir) add(0, '🏃', dawn ? 'Morning run or brisk walk' : 'Evening run or walk', 'Comfortable ' + Math.round(wx.feels) + '° and dry. The best window of the day to be outside.', fit, 'Open Fitness', '#34d399');
+            else if (nice && !night && !badAir) add(0, '🚶', 'Walk or cycle for short trips', 'Dry and ' + Math.round(wx.feels) + '°. Good for errands on foot and it saves fuel money.', null, '', '#34d399');
+            if (nice && !night && tasks.length) add(0, '🧾', 'Clear outdoor errands', tasks.length + ' open task' + (tasks.length > 1 ? 's' : '') + ' in the Planner. The weather will not get in the way.', () => switchMainView('planner'), 'Planner', '#c6f432');
+            if (wx.day && wx.cloud < 40 && !hot && hr >= 8 && hr < 15) add(0, '🧺', 'Good drying weather', 'Clear and dry: laundry, airing bedding, washing the vehicle.', null, '', '#fbbf24');
+            if (warm && !night) add(0, '💧', 'Drink more water', 'Warm at ' + Math.round(wx.feels) + '°. Keep a bottle with you.', () => window.CX8 && CX8.remPreset && (CX8.remPreset('Drink water', String(Math.min(22, hr + 1)).padStart(2, '0') + ':00', 'daily'), toast('Water reminder set.')), 'Remind me', '#38bdf8');
+            if (night && wx.cloud < 30) add(0, '🌌', 'Clear night sky', 'Low cloud. A short walk or some stargazing before bed.', null, '', '#818cf8');
+        }
+        if (wx.uv >= 6 && wx.day) add(0, '🧴', 'Sun protection', 'UV index ' + Math.round(wx.uv) + ' (' + uvTxt(wx.uv).toLowerCase() + '). Sunscreen, cap and sunglasses if you go out.', null, '', '#fbbf24');
+        if (badAir) add(0, '😷', 'Limit outdoor exertion', 'Air quality index ' + Math.round(wx.aqi) + ' (' + aqiTxt(wx.aqi).toLowerCase() + '). Train indoors and wear a mask outside.', fit, 'Open Fitness', '#f87171');
+        if (cold) add(0, '🧥', 'Layer up', 'Feels like ' + Math.round(wx.feels) + '°. Warm up longer before training.', null, '', '#7dd3fc');
+        if (fog) add(0, '🌫️', 'Low visibility', 'Fog: ride or drive slowly with lights on, or wait it out.', null, '', '#94a3b8');
+        if (windy) add(0, '💨', 'Strong wind', Math.round(wx.wind) + ' km/h wind. Skip cycling and secure anything loose outside.', null, '', '#94a3b8');
+        if (night && !A.length) add(0, '🛌', 'Wind down', 'Plan tomorrow in the Planner and log your mood.', () => switchMainView('planner'), 'Planner', '#c6f432');
+        if (!A.length) add(0, '🙂', 'Nothing special needed', 'Ordinary conditions. Carry on with the day’s plan.', () => switchMainView('planner'), 'Planner', '#00e5ff');
+        return A.slice(0, 7);
+    }
+    function paintWx() {
+        const hdr = document.querySelector('header'); if (!hdr) return; let el = $('cx11Wx');
+        if (!el) { const btns = hdr.querySelector('.cx-hbtns'); if (!btns) return; btns.insertAdjacentHTML('beforebegin', `<button type="button" id="cx11Wx" onclick="CX11.weather()" aria-label="Weather"></button>`); el = $('cx11Wx'); }
+        const l = loc(); let h;
+        if (!l) h = `<span class="ic">📍</span><span class="d"><b>Add live weather</b><span>Tap to set your location</span></span>`;
+        else if (!wx || wx.lat !== l.lat) h = `<span class="ic">🌡️</span><span class="d"><b>${esc(l.name)}</b><span>${wxErr || 'Fetching weather…'}</span></span>`;
+        else { const a = activities()[0]; h = `<span class="ic">${wxIcon(wx.code, wx.day)}</span><span class="t">${Math.round(wx.temp)}<sup>°C</sup></span><span class="d"><b>${WMO(wx.code)[0]}</b><span>${esc(wx.name)} • feels ${Math.round(wx.feels)}°${wx.pop3 >= 30 ? ' • rain ' + wx.pop3 + '%' : ''}</span></span>${a ? `<span class="tip">${a.i} ${esc(a.n)}</span>` : ''}`; }
+        if (el.innerHTML !== h) el.innerHTML = h;
+    }
+    let acts = [];
+    function openWx() {
+        const l = loc(); acts = activities();
+        const locUI = `<p class="cx-lbl" style="margin-top:14px">Location</p><div class="flex flex-wrap gap-2"><button class="cx-btn green sm" onclick="CX11.locate()">Use my location</button><input id="cx11City" class="cx-in" style="flex:1;min-width:150px" placeholder="or type a city, e.g. Sivakasi" onkeydown="if(event.key==='Enter')CX11.city()"><button class="cx-btn sm" onclick="CX11.city()">Search</button></div><div id="cx11Hits" style="margin-top:8px"></div>`;
+        if (!l) return modal('cx11WxM', 'Live weather', `<p style="font-size:13px;color:#cbd5e1;line-height:1.6">Set a location once. Your coordinates are sent only to the weather service (Open-Meteo) to fetch the forecast, and are stored on this device.</p>${locUI}`);
+        if (!wx || wx.lat !== l.lat) return modal('cx11WxM', esc(l.name), `<div class="cx-empty">${wxErr || 'Fetching weather…'}</div><button class="cx-btn sm" style="margin-top:10px" onclick="CX11.refresh()">Try again</button>${locUI}`);
+        const d0 = wx.days[0] || {}, age = Math.max(0, Math.round((Date.now() - wx.at) / 60000));
+        modal('cx11WxM', esc(wx.name), `<div class="cx11-now"><span class="ic">${wxIcon(wx.code, wx.day)}</span><span class="big">${Math.round(wx.temp)}°</span><span><b class="text-white" style="font-size:16px">${WMO(wx.code)[0]}</b><br><span style="font-size:12.5px;color:#94a3b8">Feels like ${Math.round(wx.feels)}° • High ${Math.round(d0.hi)}° / Low ${Math.round(d0.lo)}°</span></span></div>
+            <div class="cx8-kpis"><div><span>Humidity</span><b>${Math.round(wx.hum)}%</b></div><div><span>Wind</span><b>${Math.round(wx.wind)} km/h</b></div><div><span>Rain, next 3 h</span><b>${wx.pop3}%</b></div><div><span>UV index</span><b>${wx.uv == null ? '—' : Math.round(wx.uv) + ' ' + uvTxt(wx.uv)}</b></div>${wx.aqi != null ? `<div><span>Air quality</span><b>${Math.round(wx.aqi)} ${aqiTxt(wx.aqi)}</b></div>` : ''}<div><span>Sunrise / sunset</span><b>${d0.rise || '—'} / ${d0.set || '—'}</b></div></div>
+            <p class="cx-lbl">Suggested for these conditions</p><div class="cx11-act">${acts.map((a, i) => `<div style="--c:${a.c}"><i>${a.i}</i><span class="flex-1"><b>${esc(a.n)}</b><span>${esc(a.w)}</span></span>${a.go ? `<button class="cx-btn sm" onclick="CX11.act(${i})">${a.lbl}</button>` : ''}</div>`).join('')}</div>
+            <p class="cx-lbl" style="margin-top:14px">Next 12 hours</p><div class="cx11-hours">${wx.hours.map(h => `<div>${h.t}<i>${wxIcon(h.code, h.day)}</i><b>${Math.round(h.temp)}°</b><em>${h.pop == null ? '' : h.pop + '%'}</em></div>`).join('')}</div>
+            <p class="cx-lbl">5 days</p><div class="cx11-days">${wx.days.map((d, i) => `<div>${i === 0 ? 'Today' : new Date(d.d + 'T12:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}<i>${wxIcon(d.code, true)}</i><b>${Math.round(d.hi)}° / ${Math.round(d.lo)}°</b>rain ${d.pop == null ? '—' : d.pop + '%'}</div>`).join('')}</div>
+            <p style="font-size:11.5px;color:#64748b">Source: Open-Meteo forecast model for your coordinates, reading for ${wx.obs.slice(11, 16)}, fetched ${age ? age + ' min ago' : 'just now'}. It refreshes every 10 minutes. A model reading can differ by a degree or two from a thermometer on your street. <a href="#" style="color:#00e5ff" onclick="event.preventDefault();CX11.refresh()">Refresh now</a></p>${locUI}`, 680);
+    }
+    async function setLoc(lat, lon, name) { LS.set('cxWxLoc', { lat: +(+lat).toFixed(3), lon: +(+lon).toFixed(3), name }); wx = null; paintWx(); if ($('cx11WxM')) openWx(); await loadWx(true); }
+    window.CX11 = {
+        weather: openWx, refresh: () => { toast('Refreshing weather…'); loadWx(true); }, act: i => { const a = acts[i]; if (a && a.go) { const m = $('cx11WxM'); if (m) m.remove(); safe(a.go); } },
+        locate() {
+            if (!navigator.geolocation) return toast('This browser cannot share a location. Type a city instead.', true); toast('Asking the browser for your location…');
+            navigator.geolocation.getCurrentPosition(async p => { const la = p.coords.latitude, lo = p.coords.longitude; let name = 'My location'; try { const g = await getJSON(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${la}&longitude=${lo}&localityLanguage=en`, 7000); name = g.city || g.locality || g.principalSubdivision || name; } catch (e) {} setLoc(la, lo, name); },
+                e => toast(e.code === 1 ? 'Location permission was declined. Type a city instead.' : 'Could not get a location fix. Type a city instead.', true), { enableHighAccuracy: false, timeout: 12000, maximumAge: 600000 });
+        },
+        async city() {
+            const q = ($('cx11City') || {}).value || ''; if (q.trim().length < 2) return; const box = $('cx11Hits'); box.innerHTML = '<div class="cx-empty">Searching…</div>';
+            try { const g = await getJSON('https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&name=' + encodeURIComponent(q.trim())); const r = g.results || []; CX11._hits = r;
+                box.innerHTML = r.length ? r.map((x, i) => `<button class="cx-btn sm" style="margin:0 6px 6px 0" onclick="CX11.pick(${i})">${esc(x.name)}${x.admin1 ? ', ' + esc(x.admin1) : ''}${x.country_code ? ' (' + esc(x.country_code) + ')' : ''}</button>`).join('') : '<div class="cx-empty">No place by that name. Try the nearest town.</div>'; }
+            catch (e) { box.innerHTML = '<div class="cx-empty">The place search did not answer. Check the connection.</div>'; }
+        },
+        pick(i) { const x = (CX11._hits || [])[i]; if (x) setLoc(x.latitude, x.longitude, x.name); },
+        get wx() { return wx; }, activities
+    };
+
+    // ==========================================================================
+    // 2. C.A.S.P.E.R. AI (through /api/chat on your server)
+    // ==========================================================================
+    const ai = { provider: false, checked: 0, hist: [] };
+    async function probe() { try { const r = await (window.__nativeFetch || fetch)(API_BASE + '/health', { cache: 'no-store' }); if (!r.ok) throw 0; const j = await r.json(); ai.provider = j.ai || false; ai.health = j; } catch (e) { ai.provider = false; ai.health = null; } ai.checked = Date.now(); paintAi(); }
+    function paintAi() {
+        const w = $('casperChatWindow'); if (!w) return; const h3 = w.querySelector('h3'); if (!h3) return; let tag = $('cx11AiTag');
+        if (!tag) { h3.insertAdjacentHTML('beforeend', '<span id="cx11AiTag"></span>'); tag = $('cx11AiTag'); }
+        const on = !!ai.provider; tag.textContent = on ? 'AI online • ask me anything' : ai.health ? 'Built-in brain • no AI key on the server' : 'Built-in brain • server not reachable';
+        tag.style.color = on ? '#34d399' : '#fbbf24';
+        const dot = w.querySelector('.relative > span.absolute'); if (dot) { dot.style.background = on ? '#34d399' : '#fbbf24'; dot.style.boxShadow = '0 0 6px ' + (on ? '#34d399' : '#fbbf24'); }
+        const inp = $('casperInput'); if (inp) inp.placeholder = on ? 'Ask anything, sir…' : 'Ask about your money, or type help';
+    }
+    function snapshot() {
+        const o = { today: new Date().toString().slice(0, 21) };
+        safe(() => { const st = monthStats(), b = balances(); o.money = { liquid: Math.round(b.liquid), emergencyFund: Math.round(b.ef || 0), monthIncome: Math.round(st.income), monthSpent: Math.round(st.spent), monthBudget: Math.round(st.budget), budgetLeft: Math.round(st.left), safeToSpendPerDay: Math.round(st.safe), projectedMonthSpend: Math.round(st.proj) }; });
+        safe(() => { const k = new Date().toISOString().slice(0, 7), by = {}; transactions.forEach(t => { if (t.type === 'expense' && new Date(t.timestamp).toLocaleDateString('en-CA').slice(0, 7) === k) by[t.category] = (by[t.category] || 0) + t.amount; }); o.spendByCategoryThisMonth = Object.fromEntries(Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => [e[0], Math.round(e[1])])); });
+        safe(() => { o.lastEntries = transactions.slice().sort((a, b) => b.timestamp - a.timestamp).slice(0, 12).map(t => ({ date: new Date(t.timestamp).toLocaleDateString('en-CA'), type: t.type, amount: t.amount, category: t.category, note: String(t.note || '').slice(0, 40) })); });
+        safe(() => { o.wishlist = wishlistItems.filter(w => !w.purchased).slice(0, 8).map(w => ({ item: String(w.title).slice(0, 50), price: w.price })); });
+        safe(() => { const td = todayStr(); o.tasksOpen = getJ('walletTasks', []).filter(t => !t.done).slice(0, 10).map(t => ({ task: t.text, due: t.due || '' })); o.habits = customHabits.map(h => ({ habit: h.text, doneToday: (habitHistory[td] || []).includes(h.id) })); });
+        safe(() => { o.portfolio = getJ('walletPortfolio', []).slice(0, 10).map(h => ({ name: h.name, type: h.type, invested: h.invested, valueNow: h.current })); });
+        safe(() => { if (wx) o.weather = { place: wx.name, tempC: wx.temp, feelsLikeC: wx.feels, condition: WMO(wx.code)[0], rainChanceNext3hPct: wx.pop3 }; });
+        return o;
+    }
+    const md = t => { let h = esc(t); h = h.replace(/```[a-z]*\n?([\s\S]*?)```/g, (m, c) => '<pre>' + c.trim() + '</pre>'); h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/^#{1,4}\s*(.+)$/gm, '<b>$1</b>'); h = h.replace(/(?:^|\n)((?:[-*•] .+(?:\n|$))+)/g, (m, l) => '<ul>' + l.trim().split('\n').map(x => '<li>' + x.replace(/^[-*•] /, '') + '</li>').join('') + '</ul>'); return h.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>').replace(/<\/(ul|pre)><br>/g, '</$1>'); };
+    window.CXAI = {
+        ready: () => !!ai.provider,
+        async ask(msg) {
+            const input = $('casperInput'), body = $('casperChatBody'); if (!body) return;
+            body.insertAdjacentHTML('beforeend', `<div class="bg-black/60 border border-[#00e5ff]/40 p-3 rounded-xl rounded-tr-none w-10/12 ml-auto text-white shadow-[0_0_10px_rgba(0,229,255,0.2)]">${esc(msg)}</div>`);
+            if (input) input.value = ''; const id = 'cxa_' + Date.now();
+            body.insertAdjacentHTML('beforeend', `<div id="${id}" class="bg-[#00e5ff]/10 border border-[#00e5ff]/30 p-3 rounded-xl rounded-tl-none w-11/12 text-[#00e5ff] cx11-ai">Thinking…</div>`); body.scrollTop = body.scrollHeight;
+            ai.hist.push({ role: 'user', content: msg }); ai.hist = ai.hist.slice(-12); let out = '', ok = false;
+            try {
+                const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 60000);
+                const r = await fetch(API_BASE + '/chat', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: ai.hist, context: snapshot() }) }); clearTimeout(t);
+                const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status); out = j.reply; ok = true;
+            } catch (e) { out = 'I could not reach the AI service, sir (' + String(e.message || e).slice(0, 140) + '). My built-in commands still work: type help.'; ai.hist.pop(); }
+            if (ok) ai.hist.push({ role: 'assistant', content: out });
+            const el = $(id); if (el) el.innerHTML = ok ? md(out) : esc(out); body.scrollTop = body.scrollHeight;
+        }
+    };
+
+    // ==========================================================================
+    // 3. SERVER UPTIME IN THE CLOUD PANEL
+    // ==========================================================================
+    const dur = s => s < 90 ? s + ' s' : s < 5400 ? Math.round(s / 60) + ' min' : s < 172800 ? (s / 3600).toFixed(1) + ' h' : Math.round(s / 86400) + ' days';
+    async function cloudInfo() {
+        const m = $('cxSysModal'); if (!m || $('cx11Up')) return; const on = m.querySelector('.cx-btn.on'); if (!on || on.textContent.trim() !== 'Cloud') return;
+        const host = m.firstElementChild; host.insertAdjacentHTML('beforeend', '<div id="cx11Up" class="cx-row" style="margin-top:10px;font-size:12.5px;color:#cbd5e1;display:block;line-height:1.7">Checking the server…</div>');
+        await probe(); const el = $('cx11Up'); if (!el) return; const h = ai.health;
+        el.innerHTML = !h ? 'The server did not answer just now.' : `<b class="text-white">Server awake for ${dur(h.up || 0)}</b> without a restart.<br>Keep-awake: ${h.awake ? `<b style="color:#34d399">on</b>, ${h.awake.pings} self-visit${h.awake.pings === 1 ? '' : 's'} so far${h.awake.last ? ', last ' + dur(Math.round((Date.now() - h.awake.last) / 1000)) + ' ago' + (h.awake.ok === false ? ' <b style="color:#f87171">(failed)</b>' : '') : ' (first one is due 10 minutes after start)'}` : h.up === undefined ? 'this server runs an older file, upload the new server.js' : '<b style="color:#fbbf24">off</b> (no public address known to the server)'}.<br>Storage: ${esc(h.store || '')} • AI chat: ${h.ai ? '<b style="color:#34d399">' + esc(h.ai) + '</b>' : 'no key set'}.<br><span style="color:#94a3b8">If “awake for” keeps growing past a few hours with no one using the app, the server is not being put to sleep.</span>`;
+    }
+
+    const start = () => {
+        setTimeout(() => { safe(paintWx); loadWx(false); probe(); }, 2200);
+        setInterval(() => { safe(paintWx); safe(paintAi); if (!document.hidden) loadWx(false); if (Date.now() - ai.checked > 120000 && !document.hidden) probe(); }, 30000);
+        addEventListener('focus', () => { loadWx(false); if (Date.now() - ai.checked > 30000) probe(); });
+        new MutationObserver(() => safe(cloudInfo)).observe(document.body, { childList: true });
+        const tg = window.toggleCasper; if (typeof tg === 'function') window.toggleCasper = function () { const r = tg.apply(this, arguments); safe(paintAi); if (Date.now() - ai.checked > 20000) probe(); return r; };
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
