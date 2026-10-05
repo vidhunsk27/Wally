@@ -1915,7 +1915,7 @@ function sendCasperMessage() {
             let responseText = "I have received your command. Logged: '" + msg + "'."; 
             const mLower = msg.toLowerCase(); 
             if (mLower.includes("explain") || mLower.includes("help") || mLower.includes("how to")) {
-                responseText = "Welcome to Wally MK 2. <br><br><b>Dashboard:</b> Cashflow and telemetry analytics.<br><b>Investments:</b> Projections, debt clearance & FIRE metrics.<br><b>Wishlist:</b> Save target goals and savings speeds.<br><b>Vault:</b> Track media nodes.<br><b>Workspace:</b> Drafts and canvas focus space.<br><b>Growth:</b> Weakness analysis and automated countermeasures.<br><br>Use the 'Smart Entry' block on the Dashboard to paste SMS or CSV statements."; 
+                responseText = "Welcome to Wally MK 3. <br><br><b>Dashboard:</b> Cashflow and telemetry analytics.<br><b>Investments:</b> Projections, debt clearance & FIRE metrics.<br><b>Wishlist:</b> Save target goals and savings speeds.<br><b>Vault:</b> Track media nodes.<br><b>Workspace:</b> Drafts and canvas focus space.<br><b>Growth:</b> Weakness analysis and automated countermeasures.<br><br>Use the 'Smart Entry' block on the Dashboard to paste SMS or CSV statements."; 
             }
             body.innerHTML += `<div class="bg-[#00e5ff]/10 border border-[#00e5ff]/30 p-3 rounded-xl rounded-tl-none w-10/12 text-[#00e5ff] shadow-[inset_0_0_10px_rgba(0,229,255,0.1)]">${responseText}</div>`; 
             body.scrollTop = body.scrollHeight; 
@@ -2158,7 +2158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==============================================================================
-// WALLY MK 2 — UPGRADE PACK (additive add-on)
+// WALLY MK 3 — UPGRADE PACK (additive add-on)
 // Appended to the end of app.js. Everything above this line is the original file, unchanged.
 // Nothing in app.js is modified. Functions that app.js already defines are
 // left alone; this file only fills in ones that are missing and adds new modules.
@@ -2739,7 +2739,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // ==============================================================================
-// WALLY MK 2 — EXPANSION PACK 2 / PART A
+// WALLY MK 3 — EXPANSION PACK 2 / PART A
 // Offline core, J.A.R.V.I.S. theme layer, C.A.S.P.E.R. offline brain,
 // heatmap floaters, investments command, planner tab.
 // Additive: nothing above this block is modified.
@@ -3435,7 +3435,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // ==============================================================================
-// WALLY MK 2 — EXPANSION PACK 2 / PART B
+// WALLY MK 3 — EXPANSION PACK 2 / PART B
 // Wishlist cart, capture bookmarks, offline link decoder, practical Library,
 // Workspace pages + fixed sketch box, mood-adaptive Growth.
 // ==============================================================================
@@ -4082,7 +4082,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 // ==============================================================================
-// WALLY MK 2 — EXPANSION PACK 3
+// WALLY MK 3 — EXPANSION PACK 3
 // Rebuilt sketch engine, Library rename, linked Growth system with status
 // window and telemetry, hunter strip, info buttons, theme polish.
 // Additive: nothing above this block is modified.
@@ -4506,7 +4506,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 // ==============================================================================
-// WALLY MK 2 — EXPANSION PACK 4
+// WALLY MK 3 — EXPANSION PACK 4
 // C.A.S.P.E.R. front-page briefing, smart SMS reader (single / bulk / automatic),
 // offline bill scanner, animated background, motion, own-picture slots,
 // text-case clean-up, phone layout and installable-app support.
@@ -4645,7 +4645,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
                 <p class="text-[10px] font-black uppercase tracking-widest text-[#00e5ff]">Your financial command intelligence</p>
                 <h2 class="cx-display" style="font-size:clamp(26px,4.5vw,40px);font-weight:900;color:#fff;letter-spacing:.14em;text-shadow:0 0 18px rgba(0,229,255,.5);line-height:1.1">C.A.S.P.E.R.</h2>
                 <div class="cx-acro">${ACRO.map(a => `<div><b>${a[0]}</b><span>${a[1]}</span></div>`).join('')}</div>
-                <p class="text-xs text-gray-300 font-semibold" style="max-width:720px;line-height:1.6">C.A.S.P.E.R. is the engine behind Wally MK 2. It records every rupee that comes in or goes out, guards your budget and emergency fund, and turns the numbers into plain answers. It reads bank messages and bills for you, forecasts the month, tracks what you are saving for, and links your money to your habits, plans and training so the whole system moves together.</p>
+                <p class="text-xs text-gray-300 font-semibold" style="max-width:720px;line-height:1.6">C.A.S.P.E.R. is the engine behind Wally MK 3. It records every rupee that comes in or goes out, guards your budget and emergency fund, and turns the numbers into plain answers. It reads bank messages and bills for you, forecasts the month, tracks what you are saving for, and links your money to your habits, plans and training so the whole system moves together.</p>
                 <div class="cx-caps mt-3">
                     <button class="cx-btn sm" onclick="CXSms.single()">Read a bank SMS</button>
                     <button class="cx-btn sm" onclick="CXBill.pick(true)">Scan a bill</button>
@@ -4802,7 +4802,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
                 <li>Action: <b>open website</b>, with the capture link above followed by the message text variable, URL-encoded.</li>
                 <li>From then on each bank SMS opens the link for a moment and the entry appears in the ledger.</li></ol>
                 <p style="margin-top:8px"><b class="text-white">Any phone, one tap</b></p>
-                <ol><li>Install this app to the home screen.</li><li>Long-press the SMS, choose Share, and pick Wally MK 2. The entry is added directly.</li></ol>
+                <ol><li>Install this app to the home screen.</li><li>Long-press the SMS, choose Share, and pick Wally MK 3. The entry is added directly.</li></ol>
                 <p style="margin-top:8px"><b class="text-white">With your server online</b></p><p>Entries captured on the phone are also posted to the server, so they appear on your other devices at the next sync. Until then they stay in the phone's browser.</p>
                 <label class="cx-row" style="margin-top:12px;cursor:pointer"><input type="checkbox" class="form-check" ${auto ? 'checked' : ''} onchange="CXSms.auto(this.checked)"><span class="flex-1"><b class="text-sm text-white">Add captured messages without asking</b><br><span style="font-size:12px;color:#94a3b8">Off: each captured message opens the review card first.</span></span></label>`);
         },
@@ -4942,7 +4942,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 // ==============================================================================
-// WALLY MK 2 — EXPANSION PACK 5
+// WALLY MK 3 — EXPANSION PACK 5
 // Offline Analyse / Forecast / Full Report with complete PDF export, restored
 // card-rotation on both telemetry decks, six more Macro Scanner charts,
 // "sir" address, online price lookup for pasted links.
@@ -5136,7 +5136,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
             try { doc.addImage(t.toDataURL('image/jpeg', .9), 'JPEG', x + (cw - w) / 2, y + 2 + (ch - h) / 2, w, h); } catch (e) {}
             col++; if (col === 2) { col = 0; y += ch + 10; }
         });
-        const pages = doc.getNumberOfPages(); for (let i = 1; i <= pages; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(140, 150, 160); doc.text(`Page ${i} of ${pages}`, W - mg, H - 7, { align: 'right' }); doc.text('Wally MK 2', mg, H - 7); }
+        const pages = doc.getNumberOfPages(); for (let i = 1; i <= pages; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(140, 150, 160); doc.text(`Page ${i} of ${pages}`, W - mg, H - 7, { align: 'right' }); doc.text('Wally MK 3', mg, H - 7); }
         doc.save('CASPER_Report_' + new Date().toLocaleDateString('en-CA') + '.pdf'); toast(`Report exported, sir: ${pages} pages, ${cv.length} charts.`);
     };
 
@@ -5278,7 +5278,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 // ==============================================================================
-// WALLY MK 2 — EXPANSION PACK 6
+// WALLY MK 3 — EXPANSION PACK 6
 // Type-or-pick date fields, pie chart and lifetime-trajectory repairs, deck
 // buttons + drag/swipe, command bar with logo/clock/ticker, new typeface,
 // logo set, footer, alignment pass for Wishlist and Library, new motion.
@@ -5341,7 +5341,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     /* ---- telemetry decks: side cards recede so their text does not hover beside the active chart ---- */
     .chart-stack-card.prev-card, .chart-stack-card.next-card, .stats-stack-card.prev-card, .stats-stack-card.next-card { opacity: .13 !important; filter: saturate(.4); }
     .chart-stack-card, .stats-stack-card { overflow: hidden; }
-    .chart-stack-container, .stats-stack-container { touch-action: pan-y; cursor: grab; user-select: none; } .chart-stack-container.drag, .stats-stack-container.drag { cursor: grabbing; }
+    .chart-stack-container, .stats-stack-container { touch-action: pan-y pinch-zoom; cursor: grab; user-select: none; } .chart-stack-container.drag, .stats-stack-container.drag { cursor: grabbing; }
     .cx-deck-nav { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 2px auto 14px; max-width: 980px; padding: 0 8px; }
     .cx-deck-nav button { font: 700 10.5px 'Oxanium', sans-serif; letter-spacing: .09em; text-transform: uppercase; padding: 6px 11px; border-radius: 20px; color: #7dd3fc; border: 1px solid rgba(0,229,255,.25); background: rgba(0,0,0,.45); transition: all .2s; white-space: nowrap; }
     .cx-deck-nav button:hover { border-color: #00e5ff; color: #fff; transform: translateY(-1px); }
@@ -5552,7 +5552,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     function footer() {
         const main = $('mainContainer'); if (!main || $('cxFoot')) return;
         let used = 0; try { for (const k in localStorage) if (Object.prototype.hasOwnProperty.call(localStorage, k)) used += (localStorage[k].length + k.length) * 2; } catch (e) {}
-        main.insertAdjacentHTML('afterend', `<footer id="cxFoot" class="glass-panel">${LOGO(40)}<div><p><b>Wally MK 2</b> • C.A.S.P.E.R. protocol</p><p>Running on this device • ${(used / 1048576).toFixed(2)} MB of local storage in use</p></div><div class="mods">${MODS.map(m => `<button title="${m[3]}" aria-label="${m[3]}" style="color:${m[1]}" onclick="switchMainView('${m[0]}');window.scrollTo({top:0,behavior:'smooth'})"><i data-lucide="${m[2]}"></i></button>`).join('')}</div></footer>`);
+        main.insertAdjacentHTML('afterend', `<footer id="cxFoot" class="glass-panel">${LOGO(40)}<div><p><b>Wally MK 3</b> • C.A.S.P.E.R. protocol</p><p>Running on this device • ${(used / 1048576).toFixed(2)} MB of local storage in use</p></div><div class="mods">${MODS.map(m => `<button title="${m[3]}" aria-label="${m[3]}" style="color:${m[1]}" onclick="switchMainView('${m[0]}');window.scrollTo({top:0,behavior:'smooth'})"><i data-lucide="${m[2]}"></i></button>`).join('')}</div></footer>`);
     }
     function brand() {
         if (!document.querySelector('link[rel="icon"]')) { const l = document.createElement('link'); l.rel = 'icon'; l.href = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#050507"/><circle cx="32" cy="32" r="23" fill="none" stroke="#00e5ff" stroke-width="4" stroke-dasharray="34 12 8 12" stroke-linecap="round"/><circle cx="32" cy="32" r="9" fill="#00e5ff"/></svg>`); document.head.appendChild(l); }
@@ -5560,7 +5560,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     }
     function splash() {
         if (reduce || sessionStorage.getItem('cxSplash')) return; sessionStorage.setItem('cxSplash', '1');
-        const s = document.createElement('div'); s.id = 'cxSplash'; s.innerHTML = `<div>${LOGO(96)}<h1>WALLY MK 2</h1><p>C.A.S.P.E.R. coming online</p><div class="ld"><i></i></div></div>`; document.body.appendChild(s);
+        const s = document.createElement('div'); s.id = 'cxSplash'; s.innerHTML = `<div>${LOGO(96)}<h1>WALLY MK 3</h1><p>C.A.S.P.E.R. coming online</p><div class="ld"><i></i></div></div>`; document.body.appendChild(s);
         const out = () => { s.classList.add('out'); setTimeout(() => s.remove(), 500); }; s.onclick = out; setTimeout(out, 1500);
     }
 
@@ -5591,7 +5591,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 // ==============================================================================
-// WALLY MK 2 — EXPANSION PACK 7
+// WALLY MK 3 — EXPANSION PACK 7
 // Data vault (full backup, automatic snapshots, safe merge with a server),
 // cloud link, reminders, heatmap for any month, colour per tab, ring emblems,
 // command palette, quick-add, phone tab bar.
@@ -5649,7 +5649,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         const fr = new FileReader();
         fr.onload = async () => {
             try {
-                const j = JSON.parse(fr.result); if (j.app !== 'wally-mk2' || !j.data) throw new Error('not a backup');
+                const j = JSON.parse(fr.result); if (!/^wally-mk[23]$/.test(j.app) || !j.data) throw new Error('not a backup');
                 await snapshot('Before import');
                 Object.keys(j.data).forEach(k => {
                     if ([TXK, 'walletWishlistBackup', 'walletMediaBackup', 'keepNotes', 'walletTasks', 'walletJournal', 'walletSkills'].includes(k)) { let cur = [], inc = []; try { cur = JSON.parse(localStorage.getItem(k) || '[]'); inc = JSON.parse(j.data[k] || '[]'); } catch (e) {} if (Array.isArray(cur) && Array.isArray(inc) && inc.every(x => x && (x.id != null || x.ts != null))) { const idOf = x => x.id != null ? x.id : x.ts; const m = new Map(); cur.forEach(x => m.set(String(idOf(x)), x)); inc.forEach(x => m.set(String(idOf(x)), x)); localStorage.setItem(k, JSON.stringify([...m.values()])); return; } }
@@ -5683,8 +5683,16 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
     // live link: sync the moment something changes here, and the moment the server says something changed elsewhere
     const live = { rev: '', startRev: '', sent: 0, ok: null, es: null, open: false, t: null };
+    // two windows on the same device (the installed app and a browser tab) share one store: pick up what the other one saved straight away
+    let softT = null;
+    window.addEventListener('storage', e => { if (e.storageArea !== localStorage || !e.key || e.newValue === e.oldValue) return; try {
+        if (e.key === TXK) { transactions = (JSON.parse(e.newValue || '[]') || []).map(normalizeTransaction); updateUI(); }
+        else if (e.key === 'walletWishlistBackup') { wishlistItems = JSON.parse(e.newValue || '[]') || []; renderWishlist(); }
+        else if (e.key === 'walletMediaBackup') { mediaItems = JSON.parse(e.newValue || '[]') || []; renderMedia(); }
+        else if (synced(e.key)) { clearTimeout(softT); softT = setTimeout(() => { const ae = document.activeElement, typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName), last = +sessionStorage.getItem('cxReloadAt') || 0; if (!typing && !document.querySelector('.cx-modal, .fullscreen-wb') && Date.now() - last > 20000) { sessionStorage.setItem('cxReloadAt', String(Date.now())); sessionStorage.setItem('cxResume', JSON.stringify({ v: document.body.dataset.view || 'dashboard', y: window.scrollY })); location.reload(); } }, 1500); }
+    } catch (x) { console.warn('storage sync', x); } });
     const poke = ms => { if (cloud.state === 'locked' || cloud.state === 'offline' && !navigator.onLine) return; clearTimeout(live.t); live.t = setTimeout(() => { if (syncNow.busy) syncNow.again = true; else syncNow(false); }, ms || 900); };
-    window.__cxPoke = () => { if (!localStorage.getItem('walletCloudLinked')) return; if (syncNow.busy) syncNow.again = true; else poke(900); };
+    window.__cxPoke = () => { if (!localStorage.getItem('walletCloudLinked')) return; if (syncNow.busy) syncNow.again = true; else poke(350); };
     async function checkRev(force) {
         if (document.hidden && !force) return; if (!localStorage.getItem('walletCloudLinked') && cloud.state !== 'online') return;
         try { const r = await api('/rev'); if (r.status === 404) { live.ok = false; return; } if (!r.ok) return; const j = await r.json(), now = j.boot + ':' + j.rev; live.ok = true; if (now !== live.rev || cloud.state !== 'online') poke(150); } catch (e) { if (cloud.state === 'online') { cloud.state = 'offline'; paintStatus(); } }
@@ -5693,12 +5701,12 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         if (live.es || !('EventSource' in window) || !localStorage.getItem('walletCloudLinked') || document.hidden) return;
         try {
             const es = new EventSource(API_BASE + '/events' + (cloudKey() ? '?key=' + encodeURIComponent(cloudKey()) : '')); live.es = es;
-            es.onopen = () => { live.open = true; }; es.onmessage = e => { if (e.data && e.data !== live.rev) { if (syncNow.busy) syncNow.again = true; else poke(200); } };
+            es.onopen = () => { live.open = true; }; es.onmessage = e => { if (e.data && e.data !== live.rev) { if (syncNow.busy) syncNow.again = true; else poke(60); } };
             es.onerror = () => { live.open = false; if (es.readyState === 2) { live.es = null; } };
         } catch (e) { live.es = null; }
     }
     const unlisten = () => { if (live.es) { try { live.es.close(); } catch (e) {} live.es = null; live.open = false; } };
-    function localChanged() { try { if (!localStorage.getItem('walletCloudLinked')) return; if (syncNow.busy) { live.recheck = true; return; } if (stampItems()[1]) poke(700); } catch (e) {} }
+    function localChanged() { try { if (!localStorage.getItem('walletCloudLinked')) return; if (syncNow.busy) { live.recheck = true; return; } if (stampItems()[1]) poke(200); } catch (e) {} }
     ['saveTransactionsLocally', 'saveWishlistLocally', 'saveMediaLocally'].forEach(n => { const o = window[n]; if (typeof o === 'function') window[n] = function () { const r = o.apply(this, arguments); localChanged(); return r; }; });
 
     // per-item change stamps: an edit made on one device replaces the older copy on the others
@@ -6037,7 +6045,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
         setTimeout(() => { safe(emblems); safe(paintStatus); safe(() => window.WallyX.renderDeck()); icons(); if (getJ('walletSnapDay', '') !== todayStr()) snapshot('Daily').catch(() => {}); }, 1700);
         setTimeout(() => safe(checkReminders), 4000); setInterval(() => safe(checkReminders), 60000);
-        let tick = 0; setInterval(() => { tick++; if (document.hidden) return; listen(); if (live.ok === false) { if (tick % 12 === 0 && cloud.state === 'online') syncNow(false); return; } if (!live.open || tick % 4 === 0) checkRev(); }, 10000);
+        let tick = 0; setInterval(() => { tick++; if (document.hidden) return; if (tick % 3 === 0) listen(); if (live.ok === false) { if (tick % 30 === 0 && cloud.state === 'online') syncNow(false); return; } if (!live.open || tick % 3 === 0) checkRev(); }, 4000);   // the counter check costs the server nothing, so it runs often as a safety net behind the live line
         ['focus', 'online', 'pageshow'].forEach(e => window.addEventListener(e, () => { listen(); checkRev(true); }));
         safe(() => { const r = JSON.parse(sessionStorage.getItem('cxResume') || 'null'); if (r) { sessionStorage.removeItem('cxResume'); setTimeout(() => { try { if (r.v && r.v !== 'dashboard') switchMainView(r.v); window.scrollTo(0, r.y || 0); } catch (e) {} }, 1900); } });
         document.addEventListener('visibilitychange', () => { if (document.hidden) { if (cloud.state === 'online') syncNow(false); setTimeout(() => { if (document.hidden) unlisten(); }, 60000); } else { safe(checkReminders); listen(); checkRev(true); } });
@@ -6046,7 +6054,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 /* ============================================================================
-   WALLY MK 2 — ROUND 9 CORRECTIONS (appended; nothing above is changed)
+   WALLY MK 3 — ROUND 9 CORRECTIONS (appended; nothing above is changed)
    1 header ring removed  2 tile text un-hidden  3 planner colour  4 graph sign on every tab
    5 investment glossary  6 interactive greeting  7 flexible reminders
    8 stronger capture bookmark + separate guide  9 HUD introduction banner
@@ -6420,7 +6428,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     // 9. HUD INTRODUCTION BANNER — Mark 3 colours (hot-rod red, gold, arc blue) with live figures
     // ==========================================================================
     const R = '#0ea5e9', G = '#38bdf8', C = '#00e5ff';
-    const HUDSVG = `<svg viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wally MK 2 live status">
+    const HUDSVG = `<svg viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wally MK 3 live status">
         <defs><radialGradient id="cx8Glow" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#0b2a3a"/><stop offset=".55" stop-color="#07111c"/><stop offset="1" stop-color="#04060a"/></radialGradient>
         <radialGradient id="cx8Arc" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#b9f1ff"/><stop offset="1" stop-color="${C}" stop-opacity="0"/></radialGradient>
         <linearGradient id="cx8Gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7dd3fc"/><stop offset="1" stop-color="#0284c7"/></linearGradient>
@@ -6507,7 +6515,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 /* ============================================================================
-   WALLY MK 2 — ROUND 10 (appended; nothing above is changed)
+   WALLY MK 3 — ROUND 10 (appended; nothing above is changed)
    1 readable spend map: amounts in cells, measures, category filter, year strip,
      continuous flow line, week totals, day detail
    2 capture bookmark uses the backend routes (/api/bookmark…) when the cloud is linked
@@ -6664,7 +6672,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 /* ============================================================================
-   WALLY MK 2 — ROUND 11 (appended; nothing above is changed)
+   WALLY MK 3 — ROUND 11 (appended; nothing above is changed)
    1 phone layout: roomier, lighter to draw, smooth scrolling
    2 arc reactor banner in 3D with live, tappable read-outs around it
    3 live-sync indicator
@@ -6681,7 +6689,14 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     css.textContent = `
     /* anything scrolled out of view stops animating; this is the biggest smoothness win on every device */
     .cx-off, .cx-off * { animation-play-state: paused !important; }
-    html { scroll-behavior: auto; -webkit-tap-highlight-color: transparent; } body { overscroll-behavior-y: none; }
+    html { scroll-behavior: auto; -webkit-tap-highlight-color: transparent; }
+    /* scrolling: nothing may swallow a two-finger or touch scroll.
+       - the page itself chains scrolling normally (an earlier "no bounce" rule could stop it in current Chrome/Brave)
+       - charts let a vertical swipe through; only the sketch board keeps the finger for drawing */
+    html, body { overscroll-behavior: auto !important; touch-action: auto; }
+    canvas { touch-action: pan-y !important; }
+    #whiteboard, #whiteboardCanvas, .cx-wb-stage > canvas, .fullscreen-wb canvas, canvas.cx-draw { touch-action: none !important; }
+    #cxBg { pointer-events: none !important; }
     @media (max-width: 760px), (pointer: coarse) {
         /* blur behind every panel is the most expensive effect on a phone: keep it for pop-ups only */
         .glass-panel, .glass-input, .cx-tile, .cx-row, .nav-btn, header, #cxTabBar, .cx-banner, .cx-btn, .view-card * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
@@ -6723,7 +6738,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     }
     #cxCmdHi { display: block !important; width: fit-content; }
     /* ---- 3D reactor ---- */
-    #cx8Hud { perspective: 900px; overflow: visible; background: transparent; border: 0; line-height: 1.2; touch-action: pan-y; }
+    #cx8Hud { perspective: 900px; overflow: visible; background: transparent; border: 0; line-height: 1.2; }
     #cx10Stage { position: relative; transform-style: preserve-3d; transition: transform .25s ease-out; border-radius: 14px; border: 1px solid rgba(0,229,255,.45); background: radial-gradient(ellipse at 50% 50%, #0b2a3a 0%, #07111c 55%, #04060a 100%); min-height: 250px; will-change: transform; }
     #cx10Stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none !important; border-radius: 14px; transform: translateZ(0); }
     #cx10Stage > svg .core, #cx10Stage > svg circle, #cx10Stage > svg g.rA, #cx10Stage > svg path[d^="M500"] { visibility: hidden; }      /* the flat reactor gives way to the 3D one */
@@ -6841,7 +6856,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
 
 
 /* ============================================================================
-   WALLY MK 2 — ROUND 12 (appended; nothing above is changed)
+   WALLY MK 3 — ROUND 12 (appended; nothing above is changed)
    1 live weather in the header + activities that suit the conditions
    2 C.A.S.P.E.R. answers open questions through the server's AI key
    3 server uptime / keep-awake read-out in the Cloud panel
@@ -6867,7 +6882,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     .cx11-act { display: grid; gap: 7px; } .cx11-act > div { display: flex; gap: 10px; align-items: center; border: 1px solid rgba(255,255,255,.09); border-left: 3px solid var(--c, #00e5ff); border-radius: 12px; padding: 9px 11px; } .cx11-act i { font-style: normal; font-size: 22px; flex: 0 0 auto; } .cx11-act b { display: block; color: #fff; font-size: 13.5px; } .cx11-act span { font-size: 12px; color: #94a3b8; line-height: 1.4; } .cx11-act .flex-1 { min-width: 0; }
     .cx11-ai { white-space: normal; line-height: 1.55; } .cx11-ai code { background: rgba(0,0,0,.5); padding: 1px 5px; border-radius: 5px; font-size: 11px; color: #fbbf24; } .cx11-ai pre { background: rgba(0,0,0,.6); border: 1px solid rgba(0,229,255,.2); border-radius: 8px; padding: 8px; overflow-x: auto; margin: 6px 0; font-size: 11px; color: #e2e8f0; white-space: pre; } .cx11-ai ul { padding-left: 16px; list-style: disc; margin: 4px 0; } .cx11-ai b { color: #fff; }
     #cx11AiTag { font: 700 9px 'Oxanium', sans-serif; letter-spacing: .12em; text-transform: uppercase; display: block; margin-top: 2px; }
-    #casperChatBody { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+    #casperChatBody { -webkit-overflow-scrolling: touch; }
     @media (max-width: 640px) { #casperChatWindow { width: min(350px, calc(100vw - 24px)) !important; height: min(450px, calc(100vh - 190px)) !important; } }
     `;
     document.head.appendChild(css);
@@ -6967,6 +6982,23 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
             catch (e) { box.innerHTML = '<div class="cx-empty">The place search did not answer. Check the connection.</div>'; }
         },
         pick(i) { const x = (CX11._hits || [])[i]; if (x) setLoc(x.latitude, x.longitude, x.name); },
+        passForm() {
+            modal('cx11Pass', 'Change the sign-in password', `<p style="font-size:13px;color:#cbd5e1;line-height:1.6;margin-bottom:10px">This is the password asked for on the sign-in page. Changing it signs out every other device; this one stays signed in. Bookmarks and SMS forwarding are not affected, they use the machine key.</p>
+                <label class="cx-lbl">Current password</label><input id="cx11P0" type="password" class="cx-in w-full" autocomplete="current-password">
+                <label class="cx-lbl" style="margin-top:10px">New password (8 characters or more)</label><input id="cx11P1" type="password" class="cx-in w-full" autocomplete="new-password">
+                <label class="cx-lbl" style="margin-top:10px">New password again</label><input id="cx11P2" type="password" class="cx-in w-full" autocomplete="new-password" onkeydown="if(event.key==='Enter')CX11.passSave()">
+                <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12.5px;color:#94a3b8;cursor:pointer"><input type="checkbox" class="form-check" onchange="['cx11P0','cx11P1','cx11P2'].forEach(i=>document.getElementById(i).type=this.checked?'text':'password')"> Show what I type</label>
+                <div id="cx11PMsg" style="min-height:20px;margin-top:10px;font-size:13px;color:#f87171"></div><button class="cx-btn green" onclick="CX11.passSave()">Save new password</button>
+                <p style="font-size:11.5px;color:#64748b;margin-top:12px">Forgot it later? In Render add SITE_PASSWORD_RESET = 1, and the SITE_PASSWORD from the settings works again.</p>`, 460);
+            setTimeout(() => { const e = $('cx11P0'); if (e) e.focus(); }, 80);
+        },
+        async passSave() {
+            const a = $('cx11P0').value, b = $('cx11P1').value, c = $('cx11P2').value, msg = $('cx11PMsg'); msg.style.color = '#f87171';
+            if (!a) return msg.textContent = 'Type the current password.'; if (b.length < 8) return msg.textContent = 'The new password needs at least 8 characters.'; if (b !== c) return msg.textContent = 'The two new passwords do not match.'; if (a === b) return msg.textContent = 'That is the same as the current one.';
+            msg.style.color = '#94a3b8'; msg.textContent = 'Saving…';
+            try { const r = await fetch(API_BASE + '/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current: a, next: b }) }), j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || (r.status === 404 ? 'The server runs an older file. Upload the new server.js.' : 'HTTP ' + r.status)); const m = $('cx11Pass'); if (m) m.remove(); toast('Password changed, sir. Other devices will be asked to sign in again.'); }
+            catch (e) { msg.style.color = '#f87171'; msg.textContent = String(e.message || e); }
+        },
         async signOut() { try { await fetch(API_BASE + '/logout', { method: 'POST' }); } catch (e) {} try { localStorage.removeItem('walletCloudKey'); } catch (e) {} location.reload(); },
         get wx() { return wx; }, activities
     };
@@ -7022,7 +7054,7 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         const m = $('cxSysModal'); if (!m || $('cx11Up')) return; const on = m.querySelector('.cx-btn.on'); if (!on || on.textContent.trim() !== 'Cloud') return;
         const host = m.firstElementChild; host.insertAdjacentHTML('beforeend', '<div id="cx11Up" class="cx-row" style="margin-top:10px;font-size:12.5px;color:#cbd5e1;display:block;line-height:1.7">Checking the server…</div>');
         await probe(); const el = $('cx11Up'); if (!el) return; const h = ai.health;
-        el.innerHTML = !h ? 'The server did not answer just now.' : `<b class="text-white">Server awake for ${dur(h.up || 0)}</b> without a restart.<br>Keep-awake: ${h.awake ? `<b style="color:#34d399">on</b>, ${h.awake.pings} self-visit${h.awake.pings === 1 ? '' : 's'} so far${h.awake.last ? ', last ' + dur(Math.round((Date.now() - h.awake.last) / 1000)) + ' ago' + (h.awake.ok === false ? ' <b style="color:#f87171">(failed)</b>' : '') : ' (first one is due 10 minutes after start)'}` : h.up === undefined ? 'this server runs an older file, upload the new server.js' : '<b style="color:#fbbf24">off</b> (no public address known to the server)'}.<br>Storage: ${esc(h.store || '')} • AI chat: ${h.ai ? '<b style="color:#34d399">' + esc(h.ai) + '</b>' : 'no key set'}.<br>Password gate: ${h.gate ? '<b style="color:#34d399">on</b> <button class="cx-btn red sm" style="margin-left:8px" onclick="CX11.signOut()">Sign out of this device</button>' : h.gate === false ? '<b style="color:#fbbf24">off</b>' : 'needs the new server.js'}.<br><span style="color:#94a3b8">If “awake for” keeps growing past a few hours with no one using the app, the server is not being put to sleep.</span>`;
+        el.innerHTML = !h ? 'The server did not answer just now.' : `<b class="text-white">Server awake for ${dur(h.up || 0)}</b> without a restart.<br>Keep-awake: ${h.awake ? `<b style="color:#34d399">on</b>, ${h.awake.pings} self-visit${h.awake.pings === 1 ? '' : 's'} so far${h.awake.last ? ', last ' + dur(Math.round((Date.now() - h.awake.last) / 1000)) + ' ago' + (h.awake.ok === false ? ' <b style="color:#f87171">(failed)</b>' : '') : ' (first one is due 10 minutes after start)'}` : h.up === undefined ? 'this server runs an older file, upload the new server.js' : '<b style="color:#fbbf24">off</b> (no public address known to the server)'}.<br>Storage: ${esc(h.store || '')} • AI chat: ${h.ai ? '<b style="color:#34d399">' + esc(h.ai) + '</b>' : 'no key set'}.<br>Password gate: ${h.gate ? '<b style="color:#34d399">on</b> <button class="cx-btn sm" style="margin-left:8px" onclick="CX11.passForm()">Change password</button><button class="cx-btn red sm" style="margin-left:8px" onclick="CX11.signOut()">Sign out of this device</button>' : h.gate === false ? '<b style="color:#fbbf24">off</b>' : 'needs the new server.js'}.<br><span style="color:#94a3b8">If “awake for” keeps growing past a few hours with no one using the app, the server is not being put to sleep.</span>`;
     }
 
     const start = () => {
