@@ -5605,13 +5605,13 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     // ==========================================================================
     // 0. CHANGE TRACKING (records when each saved item last changed, for syncing)
     // ==========================================================================
-    const SKIP = new Set([TXK, 'walletWishlistBackup', 'walletMediaBackup', 'walletWbLocal', 'walletArt', 'walletCloudKey', 'walletCaptureLog', 'walletIntroHidden', 'walletIntroChosen', 'walletNotifLast', 'walletDeleted', 'walletCloudLinked', 'walletRelay', 'walletGrowthLevel', 'walletNotifLog']);
+    const SKIP = new Set([TXK, 'walletWishlistBackup', 'walletMediaBackup', 'walletWbLocal', 'walletArt', 'walletCloudKey', 'walletCaptureLog', 'walletIntroHidden', 'walletIntroChosen', 'walletNotifLast', 'walletDeleted', 'walletCloudLinked', 'walletRelay', 'walletGrowthLevel', 'walletNotifLog', 'walletSnapDay', 'walletFillTried', 'walletHeatCfg', 'walletItemMT']);
     const tracked = k => /^(wallet|levelup_home)/.test(k) || k === 'keepNotes';
     const synced = k => tracked(k) && !SKIP.has(k);
     const rawSet = Storage.prototype.setItem, rawRemove = Storage.prototype.removeItem;
     if (!Storage.prototype._cx) {
         Storage.prototype._cx = true;
-        const stamp = k => { try { const m = JSON.parse(localStorage.getItem('cxMT') || '{}'); m[k] = Date.now(); rawSet.call(localStorage, 'cxMT', JSON.stringify(m)); } catch (e) {} };
+        const stamp = k => { try { const m = JSON.parse(localStorage.getItem('cxMT') || '{}'); m[k] = Date.now(); rawSet.call(localStorage, 'cxMT', JSON.stringify(m)); } catch (e) {} try { window.__cxPoke && window.__cxPoke(); } catch (e) {} };
         Storage.prototype.setItem = function (k, v) { if (this === localStorage && synced(k) && this.getItem(k) !== String(v)) stamp(k); return rawSet.apply(this, arguments); };
         Storage.prototype.removeItem = function (k) { if (this === localStorage && synced(k)) stamp(k); return rawRemove.apply(this, arguments); };
     }
@@ -5680,14 +5680,58 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
     const cloud = { state: 'unknown', last: 0, note: '' };
     async function health() { try { const r = await nativeFetch(API_BASE + '/health', { cache: 'no-store' }); if (!r.ok) throw 0; const j = await r.json(); if (!j.ok) throw 0; cloud.locked = j.locked; cloud.store = j.store; return true; } catch (e) { cloud.state = 'offline'; return false; } }
 
+    // live link: sync the moment something changes here, and the moment the server says something changed elsewhere
+    const live = { rev: '', startRev: '', sent: 0, ok: null, es: null, open: false, t: null };
+    const poke = ms => { if (cloud.state === 'locked' || cloud.state === 'offline' && !navigator.onLine) return; clearTimeout(live.t); live.t = setTimeout(() => { if (syncNow.busy) syncNow.again = true; else syncNow(false); }, ms || 900); };
+    window.__cxPoke = () => { if (!localStorage.getItem('walletCloudLinked')) return; if (syncNow.busy) syncNow.again = true; else poke(900); };
+    async function checkRev(force) {
+        if (document.hidden && !force) return; if (!localStorage.getItem('walletCloudLinked') && cloud.state !== 'online') return;
+        try { const r = await api('/rev'); if (r.status === 404) { live.ok = false; return; } if (!r.ok) return; const j = await r.json(), now = j.boot + ':' + j.rev; live.ok = true; if (now !== live.rev || cloud.state !== 'online') poke(150); } catch (e) { if (cloud.state === 'online') { cloud.state = 'offline'; paintStatus(); } }
+    }
+    function listen() {
+        if (live.es || !('EventSource' in window) || !localStorage.getItem('walletCloudLinked') || document.hidden) return;
+        try {
+            const es = new EventSource(API_BASE + '/events' + (cloudKey() ? '?key=' + encodeURIComponent(cloudKey()) : '')); live.es = es;
+            es.onopen = () => { live.open = true; }; es.onmessage = e => { if (e.data && e.data !== live.rev) { if (syncNow.busy) syncNow.again = true; else poke(200); } };
+            es.onerror = () => { live.open = false; if (es.readyState === 2) { live.es = null; } };
+        } catch (e) { live.es = null; }
+    }
+    const unlisten = () => { if (live.es) { try { live.es.close(); } catch (e) {} live.es = null; live.open = false; } };
+    function localChanged() { try { if (!localStorage.getItem('walletCloudLinked')) return; if (syncNow.busy) { live.recheck = true; return; } if (stampItems()[1]) poke(700); } catch (e) {} }
+    ['saveTransactionsLocally', 'saveWishlistLocally', 'saveMediaLocally'].forEach(n => { const o = window[n]; if (typeof o === 'function') window[n] = function () { const r = o.apply(this, arguments); localChanged(); return r; }; });
+
+    // per-item change stamps: an edit made on one device replaces the older copy on the others
+    const hsh = o => { const t = JSON.stringify(o); let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return h; };
+    const loadIM = () => { try { const m = JSON.parse(localStorage.getItem('cxItemMT') || 'null'); return m && m.h ? m : null; } catch (e) { return null; } };
+    const saveIM = m => rawSet.call(localStorage, 'cxItemMT', JSON.stringify(m));
+    const lists = () => [[transactions, 'tx', 't:'], [wishlistItems.concat(mediaItems), 'w', 'w:']];
+    function stampItems() {                                                         // returns [map, somethingChangedHere]
+        let m = loadIM(); const first = !m; if (first) m = { tx: {}, w: {}, h: {} }; const now = Date.now(), seen = {}; let ch = false;
+        lists().forEach(([list, grp, pre]) => list.forEach(x => { const id = String(x.id), k = pre + id, h = hsh(x); seen[k] = 1; if (m.h[k] === undefined) { m.h[k] = h; if (!first) { m[grp][id] = now; ch = true; } } else if (m.h[k] !== h) { m.h[k] = h; m[grp][id] = now; ch = true; } }));
+        Object.keys(m.h).forEach(k => { if (!seen[k]) { delete m.h[k]; delete m[k[0] === 't' ? 'tx' : 'w'][k.slice(2)]; ch = true; } });
+        saveIM(m); return [m, ch];
+    }
+    const rebase = m => { m.h = {}; lists().forEach(([list, grp, pre]) => list.forEach(x => { m.h[pre + String(x.id)] = hsh(x); })); saveIM(m); };
+    function mergeStamped(local, server, sMt, lMt, strip) {
+        const L = new Map(local.map(x => [String(x.id), x])), S = new Map(server.map(x => [String(x.id), x])), out = [], push = []; let got = 0;
+        new Set([...S.keys(), ...L.keys()]).forEach(id => { const l = L.get(id), sv = S.get(id), lt = lMt[id] || 0, st = sMt[id] || 0;
+            if (l && (!sv || lt >= st)) { out.push(l); if (!sv || lt > st) { const m = lt || Date.now(); lMt[id] = m; push.push(Object.assign({}, l, { _m: m })); } }
+            else { const c = strip ? strip(sv) : sv; out.push(c); lMt[id] = st; if (!l || JSON.stringify(l) !== JSON.stringify(c)) got++; } });
+        return { out, push, got };
+    }
+    const noM = x => { const c = Object.assign({}, x); delete c._m; return c; };
+
     async function syncNow(manual) {
         if (syncNow.busy) return; syncNow.busy = true;
         try {
+            live.sent = 0; live.startRev = ''; try { const r0 = await api('/rev'); if (r0.ok) { const j0 = await r0.json(); live.startRev = j0.boot + ':' + j0.rev; } } catch (e) {}
             if (!(await health())) { if (manual) toast('No server is reachable, sir. Your data is safe on this device.', true); return; }
             const [tr, wr] = await Promise.all([api('/get-transactions'), api('/get-wishlist')]);
             if (tr.status === 401) { cloud.state = 'locked'; if (manual) toast('The server needs your key. Enter it under System → Cloud.', true); return; }
             if (!tr.ok || !wr.ok) throw new Error('bad response');
-            const t = tomb(), sTx = (await tr.json() || []).map(normalizeTransaction), sW = await wr.json() || [];
+            const rawTx = await tr.json() || [], sMtT = {}, sMtW = {}; rawTx.forEach(x => { sMtT[String(x.id)] = +x._m || 0; });
+            const t = tomb(), sTx = rawTx.map(normalizeTransaction), sW = await wr.json() || []; sW.forEach(x => { sMtW[String(x.id)] = +x._m || 0; });
+            const im = stampItems()[0];
             // forget tombstones for anything that is back in the local lists (restored on purpose)
             const localIds = new Set(transactions.map(x => String(x.id))), localW = new Set(wishlistItems.concat(mediaItems).map(x => String(x.id)));
             const back = { tx: t.tx.filter(id => localIds.has(id)), wish: t.wish.filter(id => localW.has(id)) };              // restored here with Undo
@@ -5699,18 +5743,21 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
                 await snapshot('Before applying deletions from another device').catch(() => {});
                 transactions = transactions.filter(x => !goneTx.has(String(x.id))); wishlistItems = wishlistItems.filter(x => !goneW.has(String(x.id))); mediaItems = mediaItems.filter(x => !goneW.has(String(x.id)));
             }
-            // ledger: union of both sides, minus what you deleted
-            const sIds = new Set(sTx.map(x => String(x.id))), pushTx = transactions.filter(x => !sIds.has(String(x.id)));
-            const merged = mergeById(sTx.filter(x => !t.tx.includes(String(x.id))), transactions).map(normalizeTransaction).filter(x => Number.isFinite(x.amount) && x.timestamp);
-            const before = transactions.length; transactions = merged; saveTransactionsLocally();
-            // wishlist + library: union, the copy on this device wins when both have the same item
-            const lw = wishlistItems.concat(mediaItems.map(m => Object.assign({}, m, { isMedia: true }))), sWid = new Set(sW.map(x => String(x.id)));
-            const all = mergeById(sW.filter(x => !t.wish.includes(String(x.id))), lw), pushW = lw.filter(x => !sWid.has(String(x.id)) || JSON.stringify(sW.find(y => String(y.id) === String(x.id))) !== JSON.stringify(x));
-            wishlistItems = all.filter(w => !w.isMedia); mediaItems = all.filter(w => w.isMedia); saveWishlistLocally(); saveMediaLocally();
+            // ledger: union of both sides, minus what you deleted; where both hold the same entry the newer edit wins
+            const mT = mergeStamped(transactions, sTx.filter(x => !t.tx.includes(String(x.id))), sMtT, im.tx), pushTx = mT.push;
+            const merged = mT.out.map(normalizeTransaction).filter(x => Number.isFinite(x.amount) && x.timestamp);
+            const before = transactions.length, gotItems = mT.got; transactions = merged;
+            // wishlist + library: same rule
+            const lw = wishlistItems.concat(mediaItems.map(m => Object.assign({}, m, { isMedia: true })));
+            const mW = mergeStamped(lw, sW.filter(x => !t.wish.includes(String(x.id))), sMtW, im.w, noM), all = mW.out, pushW = mW.push;
+            wishlistItems = all.filter(w => !w.isMedia); mediaItems = all.filter(w => w.isMedia);
+            rebase(im); saveTransactionsLocally(); saveWishlistLocally(); saveMediaLocally();
+            const delTx = t.tx.filter(id => !goneTx.has(id)), delW = t.wish.filter(id => !goneW.has(id));           // only deletions the server has not heard about yet
+            live.sent = pushTx.length + pushW.length + delTx.length + delW.length;
             for (const x of pushTx.slice(0, 400)) await api('/add-transaction', { method: 'POST', body: JSON.stringify(x) });
             for (const x of pushW.slice(0, 200)) await api('/add-wishlist', { method: 'POST', body: JSON.stringify(x) });
-            for (const id of t.tx) await api('/delete-transaction/' + encodeURIComponent(id), { method: 'DELETE' });
-            for (const id of t.wish) await api('/delete-wishlist/' + encodeURIComponent(id), { method: 'DELETE' });
+            for (const id of delTx) await api('/delete-transaction/' + encodeURIComponent(id), { method: 'DELETE' });
+            for (const id of delW) await api('/delete-wishlist/' + encodeURIComponent(id), { method: 'DELETE' });
             setJ('walletDeleted', t);
             // bank messages your phone posted to the server
             const ir = await api('/sms-inbox'); let cap = 0;
@@ -5725,17 +5772,22 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
                     else if (lv !== null && (!s || lt > s.t) && lv.length < 900000) { push[k] = { v: lv, t: lt > 1 ? lt : Date.now() }; mt[k] = push[k].t; pushed++; }
                 });
                 rawSet.call(localStorage, 'cxMT', JSON.stringify(mt));
+                live.sent += pushed;
                 if (pushed) await api('/state', { method: 'PUT', body: JSON.stringify(push) });
                 rawSet.call(localStorage, 'walletCloudLinked', '1');
             }
-            cloud.state = 'online'; cloud.last = Date.now(); cloud.note = `${merged.length} ledger entries • sent ${pushTx.length + pushW.length + pushed} • received ${merged.length - before + pulled + cap}`;
+            cloud.state = 'online'; cloud.last = Date.now(); cloud.note = `${merged.length} ledger entries • sent ${pushTx.length + pushW.length + pushed} • received ${gotItems + mW.got + pulled + cap}`;
             try { updateUI(); renderWishlist(); renderMedia(); } catch (e) {}
             if (cap) toast(`${cap} bank message${cap > 1 ? 's' : ''} from your phone added to the ledger, sir.`);
-            if (pulled && (performance.now() < 25000 || document.hidden)) { toast('Newer data arrived from your other device. Refreshing…'); setTimeout(() => location.reload(), 1200); }
-            else if (pulled) toast('Newer data arrived from your other device, sir. Reload the page to see it.');
+            if (pulled) {                                                           // settings-type data changed elsewhere: reload quietly when it will not interrupt you
+                const ae = document.activeElement, typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName), busyUi = document.querySelector('.cx-modal, .fullscreen-wb') || (window.CXGrowth && CXGrowth.timerOn && CXGrowth.timerOn());
+                const lastR = +sessionStorage.getItem('cxReloadAt') || 0, ok = Date.now() - lastR > 45000;
+                if (ok && (document.hidden || performance.now() < 25000 || (!typing && !busyUi))) { sessionStorage.setItem('cxReloadAt', String(Date.now())); sessionStorage.setItem('cxResume', JSON.stringify({ v: document.body.dataset.view || 'dashboard', y: window.scrollY })); toast('Newer data arrived from your other device. Refreshing…'); setTimeout(() => location.reload(), 900); }
+                else toast('Newer data arrived from your other device, sir. It shows after a reload.');
+            }
             else if (manual) toast('Synced with your server, sir. ' + cloud.note);
         } catch (e) { cloud.state = 'error'; if (manual) toast('Sync did not finish. Nothing was changed on this device.', true); console.warn('sync', e); }
-        finally { syncNow.busy = false; paintStatus(); }
+        finally { syncNow.busy = false; paintStatus(); try { const r = await api('/rev'); if (r.ok) { const j = await r.json(), now = j.boot + ':' + j.rev; if (live.startRev && live.sent === 0 && now !== live.startRev) syncNow.again = true; live.rev = now; live.ok = true; } else if (r.status === 404) live.ok = false; } catch (e) {} try { if (live.recheck) { live.recheck = false; if (stampItems()[1]) syncNow.again = true; } } catch (e) {} if (syncNow.again && (live.chain = (live.chain || 0) + 1) <= 4) { syncNow.again = false; setTimeout(() => syncNow(false), 250); } else { syncNow.again = false; live.chain = 0; } }
     }
     window.syncDataFromServer = async function () { try { updateUI(); renderWishlist(); renderMedia(); } catch (e) {} await syncNow(false); try { updateUI(); } catch (e) {} };
 
@@ -5982,8 +6034,10 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
         setTimeout(() => { safe(emblems); safe(paintStatus); safe(() => window.WallyX.renderDeck()); icons(); if (getJ('walletSnapDay', '') !== todayStr()) snapshot('Daily').catch(() => {}); }, 1700);
         setTimeout(() => safe(checkReminders), 4000); setInterval(() => safe(checkReminders), 60000);
-        setInterval(() => { if (cloud.state === 'online' && !document.hidden) syncNow(false); }, 120000);
-        document.addEventListener('visibilitychange', () => { if (document.hidden && cloud.state === 'online') syncNow(false); else if (!document.hidden) safe(checkReminders); });
+        let tick = 0; setInterval(() => { tick++; if (document.hidden) return; listen(); if (live.ok === false) { if (tick % 12 === 0 && cloud.state === 'online') syncNow(false); return; } if (!live.open || tick % 4 === 0) checkRev(); }, 10000);
+        ['focus', 'online', 'pageshow'].forEach(e => window.addEventListener(e, () => { listen(); checkRev(true); }));
+        safe(() => { const r = JSON.parse(sessionStorage.getItem('cxResume') || 'null'); if (r) { sessionStorage.removeItem('cxResume'); setTimeout(() => { try { if (r.v && r.v !== 'dashboard') switchMainView(r.v); window.scrollTo(0, r.y || 0); } catch (e) {} }, 1900); } });
+        document.addEventListener('visibilitychange', () => { if (document.hidden) { if (cloud.state === 'online') syncNow(false); setTimeout(() => { if (document.hidden) unlisten(); }, 60000); } else { safe(checkReminders); listen(); checkRev(true); } });
     });
 })();
 
@@ -6603,4 +6657,183 @@ if(/^https?:/.test(A)){window.open(A+'#casper='+encodeURIComponent(s.slice(8)),'
         const relink = () => ['w', 'm'].forEach(k => { document.querySelectorAll(`#cxCapture_${k} a.cx-btn[href^="javascript:"], #cx8Guide_${k} a.cx-btn[href^="javascript:"]`).forEach(a => { const mode = linked() ? 'srv' : 'loc'; if (a.dataset.x9 !== mode) { a.dataset.x9 = mode; a.href = CX8.bookmarklet(k); } }); const p = $('cxCapture_' + k); if (p && !p.querySelector('.cx9-mode')) p.insertAdjacentHTML('beforeend', `<p class="cx9-mode" style="font-size:12px;margin-top:10px;color:#94a3b8"></p>`); const n = p && p.querySelector('.cx9-mode'); if (n) n.innerHTML = linked() ? '<b style="color:#34d399">Backend mode.</b> The bookmark saves straight to your server and the pop-up closes itself; the item appears here at the next sync. If the page gives no price, a small form opens to finish it.' : '<b style="color:#fbbf24">On-device mode.</b> No backend is linked, so the bookmark hands the item to this open app. Link the cloud (shield button) and re-drag the button to save without opening the app.'; });
         setInterval(() => safe(relink), 2500);
     }
+})();
+
+
+/* ============================================================================
+   WALLY MK 2 — ROUND 11 (appended; nothing above is changed)
+   1 phone layout: roomier, lighter to draw, smooth scrolling
+   2 arc reactor banner in 3D with live, tappable read-outs around it
+   3 live-sync indicator
+   ============================================================================ */
+(function () {
+    'use strict';
+    if (!window.CX) return;
+    const { $, esc, inr, getJ, todayStr, monthStats, balances } = window.CX;
+    const safe = fn => { try { return fn(); } catch (e) { console.warn('v10', e); } };
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const coarse = matchMedia('(pointer: coarse)').matches || innerWidth < 700;
+
+    const css = document.createElement('style');
+    css.textContent = `
+    /* anything scrolled out of view stops animating; this is the biggest smoothness win on every device */
+    .cx-off, .cx-off * { animation-play-state: paused !important; }
+    html { scroll-behavior: auto; -webkit-tap-highlight-color: transparent; } body { overscroll-behavior-y: none; }
+    @media (max-width: 760px), (pointer: coarse) {
+        /* blur behind every panel is the most expensive effect on a phone: keep it for pop-ups only */
+        .glass-panel, .glass-input, .cx-tile, .cx-row, .nav-btn, header, #cxTabBar, .cx-banner, .cx-btn, .view-card * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+        .glass-panel { background: rgba(5,11,20,.94) !important; box-shadow: 0 0 0 1px rgba(0,229,255,.08) !important; }
+        .glass-panel:hover { transform: none !important; }
+        #cxBg { opacity: .45; } .bg-mesh, .scanline, body::before, body::after { animation: none !important; }
+        .view-card { transition: opacity .2s ease !important; transform: none !important; }
+        .view-card.active .glass-panel { content-visibility: auto; contain-intrinsic-size: auto 320px; }
+        .chart-stack-container, .stats-stack-container, #cxIntro, #cxCmd, .view-card.active .glass-panel:has(canvas) { content-visibility: visible; }
+    }
+    @media (max-width: 640px) {
+        /* roomier: one clear column, consistent gaps, nothing hiding under the floating buttons */
+        body { padding-left: 10px !important; padding-right: 10px !important; padding-bottom: 96px !important; }
+        .view-card.active > * + *, #upgradeDeck > * + * { margin-top: 14px !important; }
+        .glass-panel { padding: 16px !important; border-radius: 16px !important; }
+        header.glass-panel, header .glass-panel { padding: 12px !important; }
+        header h1, header .text-xl, header .text-2xl { font-size: 17px !important; line-height: 1.2 !important; }
+        .cx-hbtns { width: auto !important; margin-left: auto; gap: 6px; } .cx-hbtns button { width: 36px; height: 36px; }
+        header .universal-month-filter { padding-top: 9px !important; padding-bottom: 9px !important; font-size: 12px !important; }
+        /* the tab row at the top becomes a slim swipeable strip; the bar at the bottom does the switching */
+        header nav, header .nav-wrap, .nav-btn { scroll-snap-align: start; }
+        .nav-btn { padding: 8px 12px !important; font-size: 10.5px !important; white-space: nowrap; flex: 0 0 auto !important; }
+        .nav-btn svg { width: 14px !important; height: 14px !important; }
+        #cxCmd { padding: 12px 14px; gap: 10px; flex-wrap: nowrap; align-items: center; } #cxCmd .hi { flex: 1 1 auto; } #cxCmd .hi h3 { font-size: 17px; }
+        #cxClock { text-align: right; flex: 0 0 auto; } #cxClockT { font-size: 22px !important; } #cxClockD { font-size: 9px !important; white-space: nowrap; }
+        #cxCmd .cx8-graph { order: 3; margin-left: 0; width: 32px; height: 32px; flex-basis: 32px; }
+        #cxIntro { padding: 10px !important; }
+        h2 { font-size: 16px !important; letter-spacing: .06em !important; } .text-4xl, .text-5xl { font-size: 30px !important; }
+        .grid.grid-cols-2 > .cx-tile, .cx-tile { min-height: 74px; padding: 10px 12px; }
+        .ledger-item { padding: 10px 12px !important; }
+        input, select, textarea { font-size: 16px !important; }                              /* stops the phone zooming in on focus */
+        button, .cx-btn, .nav-btn, select { touch-action: manipulation; }
+        /* floating buttons: smaller, and they step aside while you scroll */
+        #cxFab, .cx-chatfab, #casperToggleBtn { transition: transform .25s ease, opacity .25s ease !important; }
+        #cxFab { width: 44px !important; height: 44px !important; font-size: 24px !important; left: 10px !important; bottom: 74px !important; }
+        body.cx-scrolling #cxFab { transform: translateX(-70px); opacity: 0; } body.cx-scrolling .cx-chatfab, body.cx-scrolling #casperToggleBtn { transform: translateX(80px); opacity: 0; }
+        #cxTabBar button { font-size: 8px; } #cxTabBar { box-shadow: 0 -6px 18px rgba(0,0,0,.5); }
+        /* messages slide in at the top instead of covering the buttons at the bottom */
+        #cxToast, .cx-toast { top: calc(10px + env(safe-area-inset-top)) !important; bottom: auto !important; left: 10px !important; right: 10px !important; transform: none !important; max-width: none !important; width: auto !important; font-size: 12.5px !important; padding: 10px 12px !important; }
+        .cx-modal { padding: 8px !important; align-items: flex-end !important; } .cx-modal > div { max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 10px 10px !important; padding: 16px !important; }
+    }
+    #cxCmdHi { display: block !important; width: fit-content; }
+    /* ---- 3D reactor ---- */
+    #cx8Hud { perspective: 900px; overflow: visible; background: transparent; border: 0; line-height: 1.2; touch-action: pan-y; }
+    #cx10Stage { position: relative; transform-style: preserve-3d; transition: transform .25s ease-out; border-radius: 14px; border: 1px solid rgba(0,229,255,.45); background: radial-gradient(ellipse at 50% 50%, #0b2a3a 0%, #07111c 55%, #04060a 100%); min-height: 250px; will-change: transform; }
+    #cx10Stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none !important; border-radius: 14px; transform: translateZ(0); }
+    #cx10Stage > svg .core, #cx10Stage > svg circle, #cx10Stage > svg g.rA, #cx10Stage > svg path[d^="M500"] { visibility: hidden; }      /* the flat reactor gives way to the 3D one */
+    #cx10Core { position: absolute; left: 50%; top: 50%; width: 190px; height: 190px; margin: -95px 0 0 -95px; transform-style: preserve-3d; transform: translateZ(60px); cursor: pointer; }
+    #cx10Core i { position: absolute; inset: 0; border-radius: 50%; display: block; }
+    #cx10Core .r1 { border: 4px solid rgba(14,165,233,.6); box-shadow: 0 0 22px rgba(0,229,255,.35), inset 0 0 18px rgba(0,229,255,.2); transform: translateZ(-34px); }
+    #cx10Core .r2 { inset: 10px; border: 3px dashed #38bdf8; animation: cx10Spin 16s linear infinite; transform: translateZ(-12px); }
+    #cx10Core .r3 { inset: 24px; border: 2px dotted #0ea5e9; animation: cx10Spin 9s linear infinite reverse; transform: translateZ(8px); }
+    #cx10Core .r4 { inset: 38px; border: 7px solid rgba(0,229,255,.55); transform: translateZ(24px); background: conic-gradient(from 0deg, rgba(0,229,255,.9) 0 6%, transparent 6% 10%, rgba(0,229,255,.9) 10% 16%, transparent 16% 20%, rgba(0,229,255,.9) 20% 26%, transparent 26% 30%, rgba(0,229,255,.9) 30% 36%, transparent 36% 40%, rgba(0,229,255,.9) 40% 46%, transparent 46% 50%, rgba(0,229,255,.9) 50% 56%, transparent 56% 60%, rgba(0,229,255,.9) 60% 66%, transparent 66% 70%, rgba(0,229,255,.9) 70% 76%, transparent 76% 80%, rgba(0,229,255,.9) 80% 86%, transparent 86% 90%, rgba(0,229,255,.9) 90% 96%, transparent 96%); -webkit-mask: radial-gradient(circle, transparent 46%, #000 47%); mask: radial-gradient(circle, transparent 46%, #000 47%); animation: cx10Spin 22s linear infinite; }
+    #cx10Core .r5 { inset: 66px; background: radial-gradient(circle, #fff 0%, #9af6ff 38%, rgba(0,229,255,.25) 70%, transparent 74%); box-shadow: 0 0 34px 8px rgba(0,229,255,.55); transform: translateZ(46px); animation: cx10Beat 2.6s ease-in-out infinite; }
+    #cx10Core .tri { inset: 78px; border-radius: 0; transform: translateZ(58px); background: none; } #cx10Core .tri::before { content: ''; position: absolute; left: 50%; top: 46%; width: 0; height: 0; margin: -11px 0 0 -12px; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 21px solid rgba(255,255,255,.92); filter: drop-shadow(0 0 5px #00e5ff); }
+    #cx10Core.gyro .r2 { animation: cx10Gy1 2.2s ease-in-out 1; } #cx10Core.gyro .r3 { animation: cx10Gy2 2.2s ease-in-out 1; } #cx10Core.gyro .r1 { animation: cx10Gy3 2.2s ease-in-out 1; }
+    @keyframes cx10Spin { to { rotate: 360deg; } } @keyframes cx10Beat { 0%,100% { scale: 1; opacity: .85; } 50% { scale: 1.1; opacity: 1; } }
+    @keyframes cx10Gy1 { 50% { transform: translateZ(-12px) rotateX(180deg); } 100% { transform: translateZ(-12px) rotateX(360deg); } } @keyframes cx10Gy2 { 50% { transform: translateZ(8px) rotateY(180deg); } 100% { transform: translateZ(8px) rotateY(360deg); } } @keyframes cx10Gy3 { 50% { transform: translateZ(-34px) rotateX(70deg) rotateY(40deg); } 100% { transform: translateZ(-34px); } }
+    .cx10-node { position: absolute; transform: translateZ(38px); min-width: 132px; max-width: 190px; padding: 8px 11px; border-radius: 12px; text-align: left; background: rgba(4,14,26,.82); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); box-shadow: 0 6px 18px rgba(0,0,0,.45), 0 0 14px color-mix(in srgb, var(--c) 22%, transparent); cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s; font-family: 'Oxanium', sans-serif; }
+    .cx10-node:hover, .cx10-node:focus-visible, .cx10-node.on { transform: translateZ(74px) scale(1.05); background: rgba(6,22,38,.96); box-shadow: 0 10px 26px rgba(0,0,0,.55), 0 0 22px color-mix(in srgb, var(--c) 50%, transparent); outline: none; }
+    .cx10-node span { display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--c); } .cx10-node b { display: block; font-size: 17px; font-weight: 800; color: #fff; line-height: 1.15; } .cx10-node small { display: block; font-size: 10.5px; color: #94a3b8; line-height: 1.3; }
+    .cx10-node::after { content: ''; position: absolute; top: 50%; width: 34px; height: 1px; background: linear-gradient(90deg, var(--c), transparent); opacity: .7; }
+    .cx10-node.L { left: 4%; } .cx10-node.L::after { left: 100%; } .cx10-node.R { right: 4%; text-align: right; } .cx10-node.R::after { right: 100%; transform: scaleX(-1); }
+    .cx10-node.n0 { top: 9%; } .cx10-node.n1 { top: 39%; } .cx10-node.n2 { top: 69%; } .cx10-node.L.n1 { left: 9%; } .cx10-node.R.n1 { right: 9%; }
+    #cx10Tip { position: absolute; left: 50%; bottom: 8px; transform: translate(-50%, 0) translateZ(50px); font: 600 10.5px 'Oxanium', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #7dd3fc; white-space: nowrap; pointer-events: none; text-shadow: 0 0 8px #000; }
+    #cx10Live { display: inline-flex; align-items: center; gap: 6px; font: 700 10px 'Oxanium', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #94a3b8; margin-left: 10px; } #cx10Live i { width: 7px; height: 7px; border-radius: 50%; background: #64748b; } #cx10Live.on { color: #34d399; } #cx10Live.on i { background: #34d399; box-shadow: 0 0 8px #34d399; animation: cx8Blink 1.6s steps(2) infinite; }
+    @media (max-width: 760px) {
+        #cx10Stage { min-height: 0; padding: 150px 8px 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; transform: none !important; }
+        #cx10Core { top: 75px; width: 130px; height: 130px; margin: -65px 0 0 -65px; } #cx10Core .r4 { inset: 26px; border-width: 5px; } #cx10Core .r5 { inset: 44px; } #cx10Core .tri { inset: 53px; } #cx10Core .r3 { inset: 16px; } #cx10Core .r2 { inset: 7px; }
+        .cx10-node { position: static; transform: none !important; min-width: 0; max-width: none; text-align: left !important; padding: 7px 9px; } .cx10-node::after { display: none; } .cx10-node b { font-size: 15px; } .cx10-node:active { background: rgba(6,22,38,.96); }
+        #cx10Tip { display: none; } #cx10Stage > svg { height: 150px; bottom: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) { #cx10Core i { animation: none !important; } #cx10Stage { transition: none; } }
+    `;
+    document.head.appendChild(css);
+
+    // ---- 1. smoothness helpers -------------------------------------------------
+    function sleepOffscreen() {
+        if (!('IntersectionObserver' in window)) return;
+        const io = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('cx-off', !e.isIntersecting)), { rootMargin: '120px' });
+        const scan = () => document.querySelectorAll('.glass-panel:not([data-io]), .cx-banner:not([data-io]), .cx-hud:not([data-io]), #cxFoot:not([data-io])').forEach(p => { p.dataset.io = '1'; io.observe(p); });
+        scan(); setInterval(scan, 3000);
+    }
+    function scrollCalm() {
+        let t = null, last = 0;
+        addEventListener('scroll', () => { if (Math.abs(scrollY - last) < 6) return; last = scrollY; if (!document.body.classList.contains('cx-scrolling')) document.body.classList.add('cx-scrolling'); clearTimeout(t); t = setTimeout(() => document.body.classList.remove('cx-scrolling'), 420); }, { passive: true });
+    }
+    function navStrip() {                                    // keep the chosen tab in view in the swipeable strip on a phone
+        if (innerWidth > 640) return; const a = document.querySelector('.nav-btn.active'); if (!a || !a.parentElement) return;
+        const p = a.parentElement; if (p.scrollWidth <= p.clientWidth + 4) { p.style.overflowX = 'auto'; p.style.flexWrap = 'nowrap'; p.style.scrollSnapType = 'x proximity'; p.style.scrollbarWidth = 'none'; }
+        try { p.scrollTo({ left: a.offsetLeft - 12, behavior: reduce ? 'auto' : 'smooth' }); } catch (e) {}
+    }
+    const sw0 = window.switchMainView;
+    window.switchMainView = function () { const r = sw0.apply(this, arguments); setTimeout(() => safe(navStrip), 80); return r; };
+
+    // ---- 2. 3D reactor with live read-outs --------------------------------------
+    function facts() {
+        const td = todayStr(), now = new Date(), st = monthStats(), bal = balances();
+        const spent = transactions.filter(t => t.type === 'expense' && new Date(t.timestamp).toDateString() === now.toDateString()).reduce((s, t) => s + (+t.amount || 0), 0);
+        const pct = st.budget > 0 ? Math.round(st.spent / st.budget * 100) : 0;
+        const tk = getJ('walletTasks', []).filter(t => !t.done), due = tk.filter(t => t.due === td).length, late = tk.filter(t => t.due && t.due < td).length;
+        let hAll = 0, hDone = 0; try { hAll = customHabits.length; hDone = customHabits.filter(h => (habitHistory[td] || []).includes(h.id)).length; } catch (e) {}
+        const pf = getJ('walletPortfolio', []), inv = pf.reduce((s, h) => s + (+h.current || +h.invested || 0), 0);
+        const wl = wishlistItems.filter(w => !w.purchased), can = wl.filter(w => +w.price > 0 && +w.price <= bal.liquid).length;
+        return [
+            { s: 'L n0', c: '#00e5ff', k: 'Liquid assets', v: inr(bal.liquid), d: 'Emergency fund ' + inr(bal.ef || 0), tip: 'Cash, bank and UPI you can use now. Tap for the ledger.', go: () => { const e = $('transactionList') || $('aiTerminal'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+            { s: 'L n1', c: '#fbbf24', k: 'Safe to spend today', v: inr(st.safe), d: (st.dim - st.day + 1) + ' days left this month', tip: 'Budget left, divided by the days left. Tap for the month forecast.', go: () => { try { getCASPERForecast(); } catch (e) {} const e = $('aiTerminal'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); } },
+            { s: 'L n2', c: pct >= 90 ? '#f87171' : '#34d399', k: 'Spent today', v: inr(spent), d: pct + '% of the month’s budget used', tip: 'Today’s expenses and how much of the budget is gone. Tap for the spend map.', go: () => { const e = $('upgHeatmap'); if (e) e.closest('.glass-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+            { s: 'R n0', c: late ? '#f87171' : '#c6f432', k: 'Planner', v: due + ' due today', d: late ? late + ' overdue' : tk.length + ' open in total', tip: 'Open tasks from the Planner. Tap to open it.', go: () => switchMainView('planner') },
+            { s: 'R n1', c: '#f97316', k: 'Habits', v: hDone + ' / ' + hAll, d: hAll && hDone === hAll ? 'all done today' : 'ticked today', tip: 'Growth habits ticked today. Tap to open Growth.', go: () => switchMainView('growth') },
+            { s: 'R n2', c: '#38bdf8', k: pf.length ? 'Invested' : 'Wishlist', v: pf.length ? inr(inv) : wl.length + ' item' + (wl.length === 1 ? '' : 's'), d: pf.length ? pf.length + ' holding' + (pf.length === 1 ? '' : 's') : can + ' affordable now', tip: pf.length ? 'Current value of your holdings. Tap for Investments.' : 'Open wishlist items. Tap to open the Wishlist.', go: () => switchMainView(pf.length ? 'investments' : 'wishlist') }
+        ];
+    }
+    let F = [];
+    function paintNodes() {
+        const st = $('cx10Stage'); if (!st) return; F = facts();
+        F.forEach((f, i) => {
+            let n = st.querySelector('.cx10-node[data-i="' + i + '"]');
+            if (!n) { n = document.createElement('button'); n.type = 'button'; n.dataset.i = i; n.innerHTML = '<span></span><b></b><small></small>'; st.appendChild(n); }
+            const cls = 'cx10-node ' + f.s + (n.classList.contains('on') ? ' on' : ''); if (n.className !== cls) n.className = cls; n.style.setProperty('--c', f.c);
+            const set = (q, t) => { const e = n.querySelector(q); if (e.textContent !== t) e.textContent = t; }; set('span', f.k); set('b', f.v); set('small', f.d); n.setAttribute('aria-label', f.k + ': ' + f.v + '. ' + f.tip);
+        });
+    }
+    function build3D() {
+        const hud = $('cx8Hud'); if (!hud || $('cx10Stage')) return; const svg = hud.querySelector('svg'); if (!svg) return;
+        const st = document.createElement('div'); st.id = 'cx10Stage'; hud.insertBefore(st, svg); st.appendChild(svg); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('viewBox', '0 0 1000 300');
+        st.insertAdjacentHTML('beforeend', `<div id="cx10Core" role="button" tabindex="0" aria-label="Arc reactor. Tap to spin it and refresh the figures."><i class="r1"></i><i class="r2"></i><i class="r3"></i><i class="r4"></i><i class="r5"></i><i class="tri"></i></div><div id="cx10Tip">Move to tilt • tap a read-out to open it</div>`);
+        paintNodes();
+        const tipEl = $('cx10Tip'), core = $('cx10Core'), base = tipEl.textContent;
+        st.addEventListener('pointerover', e => { const n = e.target.closest('.cx10-node'); if (n && F[n.dataset.i]) tipEl.textContent = F[n.dataset.i].tip; });
+        st.addEventListener('pointerout', e => { if (e.target.closest('.cx10-node')) tipEl.textContent = base; });
+        st.addEventListener('focusin', e => { const n = e.target.closest('.cx10-node'); if (n && F[n.dataset.i]) tipEl.textContent = F[n.dataset.i].tip; });
+        st.addEventListener('click', e => { const n = e.target.closest('.cx10-node'); if (n && F[n.dataset.i]) safe(() => F[n.dataset.i].go()); });
+        const spin = () => { core.classList.remove('gyro'); void core.offsetWidth; core.classList.add('gyro'); paintNodes(); try { window.syncDataFromServer && localStorage.getItem('walletCloudLinked') && window.__cxPoke && window.__cxPoke(); } catch (e) {} };
+        core.addEventListener('click', spin); core.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); spin(); } });
+        if (!reduce && innerWidth > 760) {                              // tilt with the pointer on a laptop
+            let raf = 0; hud.addEventListener('pointermove', e => { if (e.pointerType === 'touch') return; const r = hud.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { st.style.transform = `rotateX(${(-y * 10).toFixed(2)}deg) rotateY(${(x * 14).toFixed(2)}deg)`; }); });
+            hud.addEventListener('pointerleave', () => { st.style.transform = ''; });
+        }
+        if (!reduce && innerWidth <= 760 && window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission !== 'function') {   // tilt the reactor with the phone
+            let raf = 0; addEventListener('deviceorientation', e => { if (e.gamma == null || core.closest('.cx-off')) return; cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const x = Math.max(-25, Math.min(25, e.gamma)), y = Math.max(-25, Math.min(25, (e.beta || 45) - 45)); core.style.transform = `translateZ(60px) rotateY(${(x * .9).toFixed(1)}deg) rotateX(${(-y * .9).toFixed(1)}deg)`; }); }, { passive: true });
+        }
+    }
+    function liveBadge() {
+        const hi = $('cxCmdLine'); if (!hi) return; let b = $('cx10Live'); if (!b) { hi.insertAdjacentHTML('afterend', '<span id="cx10Live" title="Live link to your server"><i></i><em style="font-style:normal"></em></span>'); b = $('cx10Live'); hi.style.display = 'inline-block'; }
+        const dot = $('cxCloudDot'), on = !!dot && /52, 211, 153/.test(dot.style.background || ''), linked = !!localStorage.getItem('walletCloudLinked');
+        b.classList.toggle('on', on); b.style.display = linked || on ? '' : 'none'; b.querySelector('em').textContent = on ? 'Live sync' : 'Offline, saved on this device';
+    }
+    const start = () => {
+        safe(sleepOffscreen); safe(scrollCalm);
+        setInterval(() => { safe(build3D); safe(liveBadge); }, 1500); setInterval(() => safe(paintNodes), 8000);
+        ['storage', 'focus'].forEach(e => addEventListener(e, () => safe(paintNodes)));
+        const ui = window.updateUI; if (typeof ui === 'function') window.updateUI = function () { const r = ui.apply(this, arguments); safe(paintNodes); return r; };
+        setTimeout(() => safe(navStrip), 2500);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+    window.CX10 = { paintNodes, facts };
 })();
